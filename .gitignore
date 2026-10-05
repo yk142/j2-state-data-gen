@@ -1,0 +1,8 @@
+# 生成物（再生成可能）
+data/
+*.slxc
+slprj/
+*.asv
+*.autosave
+# 引継ぎ資料（公開可否が未確定）
+Neural State Model*.md
