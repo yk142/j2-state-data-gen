@@ -32,7 +32,13 @@ c   = j2_setup_path();                      % 親資産と本リポジトリを 
 mdl = buildJ2Plant();                       % J2 単軸プラントを生成（data/models/j2_plant.slx、約 15 s）
 out = simJ2(mdl, tVec, tau, q0, dq0);       % トルク列を与えて実行 → out.t, q, dq, tau
 results = runtests('test/test_j2_plant.m'); % 物理検証（13 件、約 3 分）
+S   = j2ScenarioSet('full');                % シナリオ表（338 本）。'small' は動作確認用（19 本）
+raw = runJ2Scenario(S(k), struct('excite',mE,'closed',mC));   % 1 シナリオを 8 kHz で実行
+%   mE = buildJ2Excitation(); mC = buildJ2ClosedLoop();  （開ループ励振 / PD+FF 閉ループ）
 ```
+
+- テスト: `test_j2_signals`（約 3 s）、`test_j2_scenarioset`（約 10 s）、`test_j2_scenarios`（約 250 s、実行を伴う）
+- J2 の解析モデル: `M·ddq = τ + mgL·sin θ − Bv·dq − Fc·tanh(dq/ε)`（M=6.09 kg·m²（armature 込み）、mgL=73.25 N·m）。係数は `j2Params()`
 
 - 単一テストは `runtests('test/test_j2_plant.m','Name','test_j2_plant/gravityIsPendulum')`
 - 親資産のパスは環境変数 `J2_PARENT_DIR` で上書き可（既定 `~/matlab-projects/robotArmSurrogate-matlab`）
@@ -41,7 +47,7 @@ results = runtests('test/test_j2_plant.m'); % 物理検証（13 件、約 3 分�
 
 ## 現状
 
-Phase 1 まで実装済み（J2 単軸プラント `src/plant/`、テスト `test/`）。要件・計画は `docs/`。リポジトリ直下には日本語の引継ぎ資料（`Neural State Model 学習データ生成スクリプト 引継ぎ資料…md`、ステータス: 未着手）のみがあり、コード・ビルド・lint・テストの設定はまだ存在しない。git リポジトリではない。実装前に必ず資料を読むこと（各モジュールのコード例と収集計画が載っている）。以下は特に間違えやすい点をまとめたもの。
+Phase 2 まで実装済み（プラント `src/plant/`、制御・参照軌道 `src/control/`、励振・シナリオ `src/data/`、解析パラメータ `src/model/`、テスト `test/`）。要件・計画は `docs/`。リポジトリ直下には日本語の引継ぎ資料（`Neural State Model 学習データ生成スクリプト 引継ぎ資料…md`、ステータス: 未着手）のみがあり、コード・ビルド・lint・テストの設定はまだ存在しない。git リポジトリではない。実装前に必ず資料を読むこと（各モジュールのコード例と収集計画が載っている）。以下は特に間違えやすい点をまとめたもの。
 
 ## 目的
 

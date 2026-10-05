@@ -1,5 +1,5 @@
 # 生成物（再生成可能）
-data/
+/data/
 *.slxc
 slprj/
 *.asv
