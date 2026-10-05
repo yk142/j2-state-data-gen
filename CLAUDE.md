@@ -24,9 +24,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 固定軸の実現は **URDF の該当 joint を fixed に後処理して smimport する方式（A）**に決定（`spike/phase0_fixA.m`、固定角は origin の rpy に畳み込む）。
 - 引継ぎ資料の `simulate_joint2` と Python + matlab.engine 構成は仮のもので、採用しない。
 
+## コマンド（MATLAB R2025a）
+
+```matlab
+addpath('config'); addpath(genpath('src'));
+c   = j2_setup_path();                      % 親資産と本リポジトリを path に追加し、設定を返す
+mdl = buildJ2Plant();                       % J2 単軸プラントを生成（data/models/j2_plant.slx、約 15 s）
+out = simJ2(mdl, tVec, tau, q0, dq0);       % トルク列を与えて実行 → out.t, q, dq, tau
+results = runtests('test/test_j2_plant.m'); % 物理検証（13 件、約 3 分）
+```
+
+- 単一テストは `runtests('test/test_j2_plant.m','Name','test_j2_plant/gravityIsPendulum')`
+- 親資産のパスは環境変数 `J2_PARENT_DIR` で上書き可（既定 `~/matlab-projects/robotArmSurrogate-matlab`）
+- MATLAB MCP サーバー経由の実行は 120 s でバックグラウンド化される。長い実行は完了通知を待つ
+- 8 kHz のシミュレーションは実時間の約 5〜6 倍かかる（Parallel Computing Toolbox 未許諾のため直列）
+
 ## 現状
 
-実装前の段階。リポジトリには日本語の引継ぎ資料（`Neural State Model 学習データ生成スクリプト 引継ぎ資料…md`、ステータス: 未着手）のみがあり、コード・ビルド・lint・テストの設定はまだ存在しない。git リポジトリではない。実装前に必ず資料を読むこと（各モジュールのコード例と収集計画が載っている）。以下は特に間違えやすい点をまとめたもの。
+Phase 1 まで実装済み（J2 単軸プラント `src/plant/`、テスト `test/`）。要件・計画は `docs/`。リポジトリ直下には日本語の引継ぎ資料（`Neural State Model 学習データ生成スクリプト 引継ぎ資料…md`、ステータス: 未着手）のみがあり、コード・ビルド・lint・テストの設定はまだ存在しない。git リポジトリではない。実装前に必ず資料を読むこと（各モジュールのコード例と収集計画が載っている）。以下は特に間違えやすい点をまとめたもの。
 
 ## 目的
 
