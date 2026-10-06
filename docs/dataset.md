@@ -52,7 +52,7 @@ EPSON C8-A901S の J2。J1, J4〜J6 = 0、**J3 = 75.0684°** で固定した単�
 - `ds.scale`: 引継ぎ資料の定数を実機値で保存。`DTHETA_MAX` = 5.236 rad/s、`TAU_MAX` = 860.4 N·m、`D_THETA_MAX` = 5.236e-3 rad、`D_DTHETA_MAX` = 0.1414 rad/s
 - `j2BuildFlat(ds, split, struct('features','spec'))`: `X = [sin q, cos q, dq/DTHETA_MAX, tau/TAU_MAX]`、`Y = [Δq/D_THETA_MAX, Δdq/D_DTHETA_MAX]`
 
-## 使い方
+## 使い方（MATLAB）
 ```matlab
 ds = load('data/j2_dataset_full.mat');
 [Xtr, Ytr] = j2BuildFlat(ds, 'train');                 % 学習
@@ -61,7 +61,68 @@ ds = load('data/j2_dataset_full.mat');
 [Xb,  Yb ] = j2BuildFlat(ds, 'benchmark');             % PTP ベンチマーク（評価のみ）
 [~, ~] = j2BuildFlat(ds, 'train', struct('excludeAtLimit', true));   % リミット拘束を除外して比較
 ```
-MATLAB 以外で使う場合は、行列を v7 形式で保存すると `scipy.io.loadmat` で読める: `save('flat.mat','Xtr','Ytr','Xva','Yva','Xte','Yte','-v7')`（`.mat` v7.3 は HDF5 だが、構造体配列は参照の入れ子になり読みにくい）。
+
+## 他言語向けエクスポート（Python 等）
+`ds.scen` は構造体配列で MATLAB 以外では読みにくいため、`j2ExportFlat` でフラットな形式に書き出す。
+
+```matlab
+ds = load('data/j2_dataset_full.mat');
+j2ExportFlat(ds, 'data/export/j2_flat_full.h5');                       % HDF5（既定は single、gzip 圧縮、約 103 MB）
+j2ExportFlat(ds, 'data/export/j2_flat_full.mat');                      % v7 mat（scipy.io.loadmat で読める、約 100 MB）
+j2ExportFlat(ds, 'data/export/j2_flat_full.h5', struct('dtype','double'));   % 倍精度（約 165 MB）
+```
+オプション: `splits`（既定は 4 つすべて）、`excludeAtLimit`（既定 false）、`dtype`（`single`|`double`）、`deflate`（0〜9、既定 4）。
+
+### HDF5 の構成（Python/h5py から見た形）
+| パス | 形状 | 内容 |
+|---|---|---|
+| `/<split>/X` | (N, 3) | `[q rad, dq rad/s, tau N·m]`（SI 単位） |
+| `/<split>/Y` | (N, 2) | `[Δq rad, Δdq rad/s]`（1 ms 後 − 現在） |
+| `/<split>/X_spec` | (N, 4) | `[sin q, cos q, dq/DTHETA_MAX, tau/TAU_MAX]`（引継ぎ資料の正規化形式） |
+| `/<split>/Y_spec` | (N, 2) | `[Δq/D_THETA_MAX, Δdq/D_DTHETA_MAX]` |
+| `/<split>/scenario_id` | (N,) int32 | `/scenarios/*` の添字（**0 始まり**） |
+| `/<split>/step` | (N,) int32 | シナリオ内の遷移番号（**0 始まり**） |
+| `/<split>/at_limit` | (N,) uint8 | リミット拘束の遷移なら 1 |
+| `/scenarios/{name,pattern,type,phase,split}` | (S,) 文字列 | シナリオ表（S = 394）。`phase` は `'1'` `'2'` `'3'` `'benchmark'` |
+| `/scenarios/{seed,n_transition}` | (S,) | シード、遷移数 |
+| `/stats/{x_mean,x_std,y_mean,y_std}` | (3,) / (2,) | 正規化統計（train の全遷移） |
+| `/scale/*` | (1,) | `DTHETA_MAX`, `TAU_MAX`, `D_THETA_MAX`, `D_DTHETA_MAX` |
+
+ルート属性: `preset`, `created`, `fs_data_hz`, `q_fixed_deg`, `parent_commit`, `matlab`, `exclude_at_limit`, `dtype`, `layout`, `X_columns`, `Y_columns`。
+**MATLAB が書く数値のスカラーは、h5py からは長さ 1 の配列に見える**（例: `f['scale/TAU_MAX'][0]`、`f.attrs['fs_data_hz'][0]`）。
+
+### Python での読み込み例
+```python
+import h5py, numpy as np
+
+with h5py.File("data/export/j2_flat_full.h5", "r") as f:
+    Xtr, Ytr = f["train/X"][:], f["train/Y"][:]            # (1958000, 3), (1958000, 2) float32
+    Xva, Yva = f["val/X"][:],   f["val/Y"][:]
+    Xs,  Ys  = f["train/X_spec"][:], f["train/Y_spec"][:]  # 正規化済み（4 入力 → 2 出力）
+    scale    = {k: float(f["scale"][k][0]) for k in f["scale"]}
+    names    = [x.decode() for x in f["scenarios/name"][:]]
+    pattern  = np.array([x.decode() for x in f["scenarios/pattern"][:]])
+    pat_of_row = pattern[f["train/scenario_id"][:]]         # 各行のパターン名（接触だけを取り出す等に使う）
+    at_limit = f["train/at_limit"][:].astype(bool)
+    contact_rows = at_limit                                  # リミット拘束の遷移
+
+# 例: 接触を除いた学習データ
+Xtr_free, Ytr_free = Xtr[~at_limit], Ytr[~at_limit]
+```
+v7 mat の場合:
+```python
+from scipy.io import loadmat
+m = loadmat("data/export/j2_flat_full.mat")
+Xtr, Ytr = m["train_X"], m["train_Y"]                       # (N, 3), (N, 2)
+names = [str(x).strip() for x in m["scenario_name"].ravel()]
+```
+
+### 検証
+`tools/verify_flat_export.py` が、書き出したファイルを Python（h5py / scipy）から読んで整合を確認する（形状・型・有限性、`X_spec`/`Y_spec` の再計算、split とシナリオの対応、`/stats` が train の平均・標準偏差と一致、遷移数の合計、`.h5` と `.mat` の一致）。
+```bash
+python tools/verify_flat_export.py data/export/j2_flat_full.h5 data/export/j2_flat_full.mat
+```
+full（2,856,681 遷移）で全項目合格（[export_report.md](export_report.md)）。
 
 ## 品質（検証 15 項目すべて合格）
 NaN なし、|τ| ≤ 860.4 N·m、|dq| ≤ 4.54 rad/s、q は −158.7° 〜 +65.6°（接触シナリオはリミットを最大 0.65° 超える）、統計は train のみ由来、リミット拘束は全体の 6.6%（接触シナリオ内で 56.9%）。カバレッジ（20 ビン格子）: 3 次元占有率 25.6%、PTP が学習系の占有セルに入る割合 94.7%（[phase3_report.md](phase3_report.md)、[limit_contact_report.md](limit_contact_report.md)）。

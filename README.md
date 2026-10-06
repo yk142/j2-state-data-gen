@@ -33,6 +33,9 @@ R  = validateJ2Data(ds);                     % 検証（15 項目）
 
 % 4. カバレッジ評価（PNG 8 枚と指標）
 M = j2Coverage(ds, 'reports/my_run');
+
+% 5. MATLAB 以外（Python 等）で使う: HDF5 / v7 mat に書き出す
+j2ExportFlat(ds, 'data/export/j2_flat.h5');  % h5py で読める。読み込み例は docs/dataset.md
 ```
 
 長時間の `full` 生成は別プロセスで連続実行できる:
@@ -47,10 +50,12 @@ runtests('test/test_j2_signals.m')       % 信号・Sobol・導出パラメー�
 runtests('test/test_j2_scenarioset.m')   % シナリオ表・参照軌道（約 15 s）
 runtests('test/test_j2_dataset.m')       % 8k→1k 変換・フラット化・検証（約 6 s）
 runtests('test/test_j2_coverage.m')      % カバレッジ評価（約 2 分）
+runtests('test/test_j2_export.m')        % エクスポート（HDF5 / v7 mat の書き出しと読み戻し、約 35 秒）
 runtests('test/test_j2_plant.m')         % 物理検証 13 件（約 3 分）
 runtests('test/test_j2_scenarios.m')     % シナリオ実行 17 件（約 5.5 分）
 ```
 再現確認（別プロセス）: `matlab -batch "addpath('tools'); j2_repro_check()"`
+エクスポートの Python 側の検証: `python tools/verify_flat_export.py data/export/j2_flat_full.h5 data/export/j2_flat_full.mat`（numpy・h5py・scipy が必要）
 
 ## 構成
 | ディレクトリ | 内容 |
@@ -69,7 +74,7 @@ runtests('test/test_j2_scenarios.m')     % シナリオ実行 17 件（約 5.5 �
 | `data/` | 生成物（git 管理外）: `cache/`（8 kHz 生データ）、`j2_dataset_<preset>.mat` |
 
 ## ドキュメント
-- [docs/dataset.md](docs/dataset.md): データセットの仕様・使い方・注意点
+- [docs/dataset.md](docs/dataset.md): データセットの仕様・使い方・注意点・他言語向けエクスポート（Python の読み込み例）
 - [docs/requirements.md](docs/requirements.md): 要件定義 / [docs/plan.md](docs/plan.md): 計画と進捗
 - フェーズごとのレポート: [Phase 0](docs/phase0_report.md)、[Phase 1](docs/phase1_report.md)、[Phase 2](docs/phase2_report.md)、[Phase 3](docs/phase3_report.md)、[リミット接触](docs/limit_contact_report.md)、[Phase 4](docs/phase4_report.md)
 - 作業は「issue → ブランチ → 作業 → 報告 → コミット・issue コメント → PR」の順で行う（`CLAUDE.md`）

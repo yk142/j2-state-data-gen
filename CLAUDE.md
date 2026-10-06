@@ -48,6 +48,7 @@ raw = runJ2Scenario(S(k), struct('excite',mE,'closed',mC));   % 1 シナリオ�
 
 - データセット生成: `ds = genJ2Dataset(struct('preset','small'))`（約 6 分）。`'full'` は約 6〜7 時間かかる。シナリオ単位で `data/cache/` にキャッシュされ、中断しても同じ呼び出しで再開できる
 - 長時間生成は別プロセスで: `matlab -batch "addpath('tools'); j2_gen_worker('full', i, n)"`（n 分割の i 番目を担当）。ワーカー 1 本で約 3.7 GB 使うため、メモリが足りなければ並列にしない。生成後は `j2_finish('full')` で組み立て・検証・カバレッジ評価
+- 他言語向け: `j2ExportFlat(ds, 'x.h5')`（HDF5、h5py から (N,d) で見える。インデックスは 0 始まり）または `x.mat`（v7）。Python 側の検証は `python tools/verify_flat_export.py x.h5 x.mat`
 - 検証: `validateJ2Data(ds)`、フラット化: `[X,Y] = j2BuildFlat(ds,'train')`（`features='spec'` で引継ぎ資料の正規化形式）、カバレッジ: `j2Coverage(ds, outDir)`（PNG 7 枚と指標）
 - 1 kHz 変換は、状態は瞬時値の間引き、トルクは区間平均（フィルタなし。遷移データのため）。リミット拘束（リミットから 0.1° 以内または外側）の遷移にはフラグを付けるが、既定では除外しない
 - 単一テストは `runtests('test/test_j2_plant.m','Name','test_j2_plant/gravityIsPendulum')`
