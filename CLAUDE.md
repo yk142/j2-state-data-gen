@@ -22,6 +22,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 実装は **MATLAB/Simulink**（このリポジトリ内）。`robotArmSurrogate-matlab` の `c8_params` やプラント関連は path 参照のみ（コピーしない）。Deep Learning / System Identification / Statistics and ML Toolbox は使用禁止。
 - 対象は EPSON C8-A901S の J2。**他軸を固定した J2 単軸の別モデル**を作る。固定姿勢は J1, J4〜J6 = 0、**J3 = 75.0684°**（θ=0 を倒立平衡点にする値。J3=0 だと平衡点が θ≈+11° にずれる）。この姿勢で J2 の重力トルクは −mgL·sin θ（mgL=73.25 N·m）。
 - 固定軸の実現は **URDF の該当 joint を fixed に後処理して smimport する方式（A）**に決定（`spike/phase0_fixA.m`、固定角は origin の rpy に畳み込む）。
+- 生成済み full データセットはリミットに接触しない（励振モデルのバリアで止まる）。機械ストッパの挙動は学習対象外。
 - 引継ぎ資料の `simulate_joint2` と Python + matlab.engine 構成は仮のもので、採用しない。
 
 ## コマンド（MATLAB R2025a）
