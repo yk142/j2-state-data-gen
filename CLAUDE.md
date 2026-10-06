@@ -40,6 +40,10 @@ raw = runJ2Scenario(S(k), struct('excite',mE,'closed',mC));   % 1 シナリオ�
 - テスト: `test_j2_signals`（約 3 s）、`test_j2_scenarioset`（約 10 s）、`test_j2_scenarios`（約 250 s、実行を伴う）
 - J2 の解析モデル: `M·ddq = τ + mgL·sin θ − Bv·dq − Fc·tanh(dq/ε)`（M=6.09 kg·m²（armature 込み）、mgL=73.25 N·m）。係数は `j2Params()`
 
+- データセット生成: `ds = genJ2Dataset(struct('preset','small'))`（約 6 分）。`'full'` は約 6〜7 時間かかる。シナリオ単位で `data/cache/` にキャッシュされ、中断しても同じ呼び出しで再開できる
+- 長時間生成は別プロセスで: `matlab -batch "addpath('tools'); j2_gen_worker('full', i, n)"`（n 分割の i 番目を担当）。ワーカー 1 本で約 3.7 GB 使うため、メモリが足りなければ並列にしない。生成後は `j2_finish('full')` で組み立て・検証・カバレッジ評価
+- 検証: `validateJ2Data(ds)`、フラット化: `[X,Y] = j2BuildFlat(ds,'train')`（`features='spec'` で引継ぎ資料の正規化形式）、カバレッジ: `j2Coverage(ds, outDir)`（PNG 7 枚と指標）
+- 1 kHz 変換は、状態は瞬時値の間引き、トルクは区間平均（フィルタなし。遷移データのため）。リミット拘束（リミットから 0.1° 以内）の遷移は既定で学習用から除外
 - 単一テストは `runtests('test/test_j2_plant.m','Name','test_j2_plant/gravityIsPendulum')`
 - 親資産のパスは環境変数 `J2_PARENT_DIR` で上書き可（既定 `~/matlab-projects/robotArmSurrogate-matlab`）
 - MATLAB MCP サーバー経由の実行は 120 s でバックグラウンド化される。長い実行は完了通知を待つ
@@ -47,7 +51,7 @@ raw = runJ2Scenario(S(k), struct('excite',mE,'closed',mC));   % 1 シナリオ�
 
 ## 現状
 
-Phase 2 まで実装済み（プラント `src/plant/`、制御・参照軌道 `src/control/`、励振・シナリオ `src/data/`、解析パラメータ `src/model/`、テスト `test/`）。要件・計画は `docs/`。リポジトリ直下には日本語の引継ぎ資料（`Neural State Model 学習データ生成スクリプト 引継ぎ資料…md`、ステータス: 未着手）のみがあり、コード・ビルド・lint・テストの設定はまだ存在しない。git リポジトリではない。実装前に必ず資料を読むこと（各モジュールのコード例と収集計画が載っている）。以下は特に間違えやすい点をまとめたもの。
+Phase 3 の実装済み（生成・検証・カバレッジ評価。full の生成は進行中）。Phase 2 まで（プラント `src/plant/`、評価 `src/analysis/`、制御・参照軌道 `src/control/`、励振・シナリオ `src/data/`、解析パラメータ `src/model/`、テスト `test/`）。要件・計画は `docs/`。リポジトリ直下には日本語の引継ぎ資料（`Neural State Model 学習データ生成スクリプト 引継ぎ資料…md`、ステータス: 未着手）のみがあり、コード・ビルド・lint・テストの設定はまだ存在しない。git リポジトリではない。実装前に必ず資料を読むこと（各モジュールのコード例と収集計画が載っている）。以下は特に間違えやすい点をまとめたもの。
 
 ## 目的
 
