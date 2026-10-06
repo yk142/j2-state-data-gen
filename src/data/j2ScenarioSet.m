@@ -3,7 +3,7 @@ function S = j2ScenarioSet(preset)
 %   S = J2SCENARIOSET(preset)   preset = 'full'（既定）| 'small'（テスト・動作確認用）
 %
 %   S は構造体配列。主なフィールド:
-%     name, pattern, type ('excitation'|'hold'|'ptp'), phase (1|2|'benchmark'), split
+%     name, pattern, type ('excitation'|'hold'|'ptp'), phase (1|2|3 = リミット接触|'benchmark'), split
 %     seed        シナリオごとの乱数シード（再現性。NFR-1）
 %     duration    継続時間 [s]（ptp は軌道長で決まるため上限）
 %     ampRel      励振振幅 / tauRef（tauRef = 定格トルク）、fMax 帯域 [Hz]
@@ -38,6 +38,7 @@ switch preset
               'step',      'excitation',2, 20,  2, 1.0, 0
               'micro',     'excitation',2, 20, 10, 0.05, 5 };
         nHold = 20;  durHold = 5;  nNear = 10;  durNear = 10;  nPtp = 3;  speeds = [0.2 0.4 0.6 0.8];  nWp = 6;
+        nContact = [12 24 20];
     case 'small'
         P = { 'bln_normal','excitation',1, 2, 2, 0.5, 20
               'bln_high',  'excitation',1, 1, 1, 1.0, 20
@@ -47,6 +48,7 @@ switch preset
               'step',      'excitation',2, 1, 1, 1.0, 0
               'micro',     'excitation',2, 1, 2, 0.05, 5 };
         nHold = 1;  durHold = 2;  nNear = 2;  durNear = 2;  nPtp = 1;  speeds = [0.3 0.7];  nWp = 3;
+        nContact = [2 2 2];
     otherwise
         error('j2ScenarioSet:preset', '未知の preset: %s', preset);
 end
@@ -56,7 +58,7 @@ nExc = sum([P{:,4}]);
 U = j2Sobol(nExc, 2, c.seedBase);
 S = struct('name',{},'pattern',{},'type',{},'phase',{},'split',{},'seed',{},'duration',{}, ...
     'ampRel',{},'fMax',{},'q0',{},'dq0',{},'qSoftFrac',{},'posture',{},'speedScale',{},'nWp',{}, ...
-    'refAmp',{},'refMargin',{});
+    'refAmp',{},'refMargin',{},'dqSoftFrac',{},'ampRel2',{},'tFlip',{},'side',{});
 k = 0;  iExc = 0;
 for r = 1:size(P,1)
     for i = 1:P{r,4}
@@ -117,6 +119,38 @@ for is = 1:numel(speeds)
     end
 end
 
+% ---- リミット接触（機械ストッパへの衝突・押し付け・離脱。励振モデルのバリアをリミットの外側へ移して接触を許す）----
+% 追加は既存シナリオの後ろ（既存のシード・Sobol 割り当て・split を変えない）。パラメータはシナリオのシードから決める。
+%   contact_fall : 自由落下で重力方向のリミットに衝突 → 反発・押し付けて静止（微小 BLN）
+%   contact_drive: リミット方向へ定トルク（0.2〜0.5 τ_ref）で衝突・押し付け → tFlip で反転し反対側へ（両側に接触）
+%   contact_bln  : 大振幅 BLN（1.0 τ_ref）にバイアス（0.15 τ_ref）を足してリミットへ繰り返し接触
+% 速度バリアは最大角速度の 80%（衝突速度を速度上限内に収める）。静止サンプルが増えすぎないよう継続時間は短め。
+kinds = {'contact_fall', 3, 5, 0.05; 'contact_drive', 4, 5, 0; 'contact_bln', 10, 5, 1.0};   % {pattern, 継続時間, fMax, ampRel}
+for kd = 1:3
+    for i = 1:nContact(kd)
+        s = emptyScenario();
+        s.pattern = kinds{kd,1};  s.type = 'excitation';  s.phase = 3;
+        s.name = sprintf('%s_%03d', s.pattern, i);
+        s.seed = c.seedBase + 300000 + 1000*kd + i;
+        rs = RandStream('twister','Seed',s.seed);
+        s.side = 1 - 2*(mod(i,2)==0);                       % 奇数: +側、偶数: −側（最初に向かう側）
+        s.duration = kinds{kd,2};  s.fMax = kinds{kd,3};  s.ampRel = kinds{kd,4};
+        s.qSoftFrac = 1.10;  s.dqSoftFrac = 0.80;           % 位置バリアはリミットの外側（実質無効）
+        switch s.pattern
+            case 'contact_fall'
+                if s.side > 0, s.q0 = deg2rad(25 + 30*rand(rs)); else, s.q0 = -deg2rad(25 + 115*rand(rs)); end
+                s.dq0 = (2*rand(rs) - 1) * 0.5;
+            case 'contact_drive'
+                s.q0 = qLo + rand(rs)*(qHi - qLo);  s.dq0 = 0;
+                s.ampRel = 0.2 + 0.3*rand(rs);  s.ampRel2 = 0.2 + 0.3*rand(rs);  s.tFlip = 1.5 + 0.7*rand(rs);
+            case 'contact_bln'
+                s.q0 = qLo + rand(rs)*(qHi - qLo);  s.dq0 = (2*rand(rs) - 1) * dqI;
+                s.ampRel2 = 0.15;                           % バイアス（側 side の向き）
+        end
+        S(end+1) = s; %#ok<AGROW>
+    end
+end
+
 % ---- train / val / test をパターンごとに 70/15/15 で分割（シードで決定的）----
 pats = unique({S.pattern}, 'stable');
 for ip = 1:numel(pats)
@@ -139,5 +173,5 @@ end
 function s = emptyScenario()
 s = struct('name','','pattern','','type','','phase',1,'split','','seed',0,'duration',0, ...
     'ampRel',0,'fMax',0,'q0',0,'dq0',0,'qSoftFrac',0.85,'posture',0,'speedScale',0,'nWp',0, ...
-    'refAmp',0,'refMargin',0);
+    'refAmp',0,'refMargin',0,'dqSoftFrac',0.60,'ampRel2',0,'tFlip',0,'side',0);
 end

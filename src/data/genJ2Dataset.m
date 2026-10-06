@@ -15,8 +15,10 @@ function ds = genJ2Dataset(opts)
 %
 %   組み立て:
 %     1. 8 kHz → 1 kHz（j2Downsample）。生データは cache に残す
-%     2. リミット拘束フラグ（リミットから 0.1° 以内の遷移）を付ける
-%     3. 正規化統計は train かつ非拘束の遷移のみから算出（val/test のリーク防止）
+%     2. リミット拘束フラグ（遷移の開始・終了状態のどちらかが、リミットから 0.1° 以内または外側）を付ける。
+%        リミット接触シナリオ（#11）を追加したため、拘束サンプルは既定で学習対象に含める
+%        （除外して比較したい場合は j2BuildFlat の excludeAtLimit を使う）
+%     3. 正規化統計は train の全遷移から算出（val/test のリーク防止。拘束を含む）
 %     4. マニフェスト（生成条件・シード・固定姿勢・親資産のコミット）を保存
 c = j2_setup_path();
 if nargin < 1, opts = struct(); end
@@ -86,15 +88,14 @@ end
 isTrain = strcmp({scen.split},'train');
 X = [];  Y = [];
 for k = find(isTrain)
-    sc = scen(k);  ok = ~sc.atLimit;
-    Xk = [sc.q(1:end-1), sc.dq(1:end-1), sc.tau];
-    Yk = [diff(sc.q), diff(sc.dq)];
-    X = [X; Xk(ok,:)]; Y = [Y; Yk(ok,:)]; %#ok<AGROW>
+    sc = scen(k);
+    X = [X; sc.q(1:end-1), sc.dq(1:end-1), sc.tau]; %#ok<AGROW>
+    Y = [Y; diff(sc.q), diff(sc.dq)];                %#ok<AGROW>
 end
 stats.xMean = mean(X,1);  stats.xStd = std(X,0,1);
 stats.yMean = mean(Y,1);  stats.yStd = std(Y,0,1);
 stats.xStd(stats.xStd < eps) = 1;  stats.yStd(stats.yStd < eps) = 1;
-stats.note = '正規化統計は train かつ非リミット拘束の遷移のみから算出（val/test のリーク防止）。X=[q dq tau], Y=[Δq Δdq]';
+stats.note = '正規化統計は train の全遷移（リミット拘束を含む）から算出（val/test のリーク防止）。X=[q dq tau], Y=[Δq Δdq]';
 % 引継ぎ資料のスケール（仕様どおり）: 実機値で再定義
 dt = 1/jp.fsData;
 scale.DTHETA_MAX = jp.qdMax;                 scale.TAU_MAX = jp.tauPeak;

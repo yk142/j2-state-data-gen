@@ -22,7 +22,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 実装は **MATLAB/Simulink**（このリポジトリ内）。`robotArmSurrogate-matlab` の `c8_params` やプラント関連は path 参照のみ（コピーしない）。Deep Learning / System Identification / Statistics and ML Toolbox は使用禁止。
 - 対象は EPSON C8-A901S の J2。**他軸を固定した J2 単軸の別モデル**を作る。固定姿勢は J1, J4〜J6 = 0、**J3 = 75.0684°**（θ=0 を倒立平衡点にする値。J3=0 だと平衡点が θ≈+11° にずれる）。この姿勢で J2 の重力トルクは −mgL·sin θ（mgL=73.25 N·m）。
 - 固定軸の実現は **URDF の該当 joint を fixed に後処理して smimport する方式（A）**に決定（`spike/phase0_fixA.m`、固定角は origin の rpy に畳み込む）。
-- 生成済み full データセットはリミットに接触しない（励振モデルのバリアで止まる）。機械ストッパの挙動は学習対象外。
+- リミット接触: 基本の 338 本はバリアでリミットに接触しない。接触は `contact_fall/drive/bln`（56 本、バリアをリミットの外側に移し、速度バリアは 80%）で取る。接触遷移（`atLimit`）は既定で学習対象に含め、`j2BuildFlat` の `excludeAtLimit=true` で除外できる。
 - 引継ぎ資料の `simulate_joint2` と Python + matlab.engine 構成は仮のもので、採用しない。
 
 ## コマンド（MATLAB R2025a）
@@ -44,7 +44,7 @@ raw = runJ2Scenario(S(k), struct('excite',mE,'closed',mC));   % 1 シナリオ�
 - データセット生成: `ds = genJ2Dataset(struct('preset','small'))`（約 6 分）。`'full'` は約 6〜7 時間かかる。シナリオ単位で `data/cache/` にキャッシュされ、中断しても同じ呼び出しで再開できる
 - 長時間生成は別プロセスで: `matlab -batch "addpath('tools'); j2_gen_worker('full', i, n)"`（n 分割の i 番目を担当）。ワーカー 1 本で約 3.7 GB 使うため、メモリが足りなければ並列にしない。生成後は `j2_finish('full')` で組み立て・検証・カバレッジ評価
 - 検証: `validateJ2Data(ds)`、フラット化: `[X,Y] = j2BuildFlat(ds,'train')`（`features='spec'` で引継ぎ資料の正規化形式）、カバレッジ: `j2Coverage(ds, outDir)`（PNG 7 枚と指標）
-- 1 kHz 変換は、状態は瞬時値の間引き、トルクは区間平均（フィルタなし。遷移データのため）。リミット拘束（リミットから 0.1° 以内）の遷移は既定で学習用から除外
+- 1 kHz 変換は、状態は瞬時値の間引き、トルクは区間平均（フィルタなし。遷移データのため）。リミット拘束（リミットから 0.1° 以内または外側）の遷移にはフラグを付けるが、既定では除外しない
 - 単一テストは `runtests('test/test_j2_plant.m','Name','test_j2_plant/gravityIsPendulum')`
 - 親資産のパスは環境変数 `J2_PARENT_DIR` で上書き可（既定 `~/matlab-projects/robotArmSurrogate-matlab`）
 - MATLAB MCP サーバー経由の実行は 120 s でバックグラウンド化される。長い実行は完了通知を待つ

@@ -17,7 +17,8 @@ classdef test_j2_scenarioset < matlab.unittest.TestCase
             tc.verifyEqual([cnt('chirp') cnt('step') cnt('micro') cnt('nearlimit')], [10 20 20 10]);
             tc.verifyEqual(nnz(strcmp({S.type},'hold')), 7*20 + 10);     % 重要 7 姿勢 × 20 + リミット近傍 10
             tc.verifyEqual(nnz(strcmp({S.type},'ptp')), 12);             % 4 速度 × 3
-            tc.verifyEqual(numel(S), 338);
+            tc.verifyEqual(numel(S), 338 + 56);                              % + リミット接触 56 本（#11）
+            tc.verifyEqual([cnt('contact_fall') cnt('contact_drive') cnt('contact_bln')], [12 24 20]);
         end
 
         function seedsAndNamesAreUnique(tc)
@@ -53,6 +54,37 @@ classdef test_j2_scenarioset < matlab.unittest.TestCase
             tc.verifyEqual(gap, repmat(deg2rad(4), size(gap)), 'AbsTol', 1e-12);
             tc.verifyTrue(any([nl.posture] > 0) && any([nl.posture] < 0));
             tc.verifyTrue(all(strcmp({nl.type}, 'hold')));
+        end
+
+        function existingScenariosAreUnchangedByContactAdditions(tc)
+            % 接触シナリオは既存の後ろに追加され、既存のシード・初期状態・split を変えない（キャッシュを再利用できる）
+            S = j2ScenarioSet('full');
+            isC = startsWith({S.pattern}, 'contact_');
+            tc.verifyEqual(find(isC), (numel(S)-nnz(isC)+1 : numel(S)));      % 末尾に連続して並ぶ
+            tc.verifyEqual(S(1).name, 'bln_normal_001');
+            jp = j2Params();
+            tc.verifyEqual(S(1).dqSoftFrac, 0.60);                            % 既存の励振は速度バリア 0.60 のまま
+            tc.verifyEqual(S(1).qSoftFrac, 0.85);
+            tc.verifyTrue(all(strcmp({S(isC).type}, 'excitation')) && all([S(isC).phase] == 3));
+        end
+
+        function contactScenariosAreWellFormed(tc)
+            jp = j2Params();  S = j2ScenarioSet('full');
+            C = S(startsWith({S.pattern}, 'contact_'));
+            tc.verifyTrue(all([C.qSoftFrac] > 1));                            % 位置バリアはリミットの外側
+            tc.verifyEqual(unique([C.dqSoftFrac]), 0.80);
+            tc.verifyGreaterThan(min([C.q0]), jp.qMin);  tc.verifyLessThan(max([C.q0]), jp.qMax);
+            tc.verifyEqual(sort(unique([C.side])), [-1 1]);
+            % 落下は重力方向のリミットへ向かう側から始まる（θ>0 なら +側、θ<0 なら −側）
+            F = C(strcmp({C.pattern}, 'contact_fall'));
+            tc.verifyEqual(sign([F.q0]), [F.side]);
+            tc.verifyGreaterThan(min(abs([F.q0])), deg2rad(24));              % 摩擦で動かない領域（約 ±19°）の外
+            D = C(strcmp({C.pattern}, 'contact_drive'));
+            tc.verifyTrue(all([D.ampRel] >= 0.2 & [D.ampRel] <= 0.5));
+            tc.verifyTrue(all([D.tFlip] >= 1.5 & [D.tFlip] <= 2.2));
+            tc.verifyLessThan(max([D.tFlip]), min([D.duration]));             % 反転は継続時間内
+            % 両側で同数（奇数・偶数）
+            tc.verifyEqual(nnz([C.side] > 0), nnz([C.side] < 0));
         end
 
         function ptpTrajectoryIsC2AndStopsAtWaypoints(tc)

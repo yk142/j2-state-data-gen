@@ -2,14 +2,15 @@ function [X, Y, info] = j2BuildFlat(ds, split, opts)
 %J2BUILDFLAT データセットから (入力, 目標) のフラットな行列を作る。
 %   [X, Y, info] = J2BUILDFLAT(ds, split, opts)
 %     split  'train' | 'val' | 'test' | 'benchmark'（文字列の cell で複数指定可）
-%     opts.excludeAtLimit  リミット拘束の遷移を除く（既定 true）
+%     opts.excludeAtLimit  リミット拘束の遷移を除く（既定 false。リミット接触シナリオ #11 の追加後は含める。
+%                          拘束の有無で比較・除外したいときに true）
 %     opts.features        'raw'（既定）: X=[q dq tau]、Y=[Δq Δdq]（SI 単位）
 %                          'spec'      : 引継ぎ資料の形（正規化済み）
 %                              X=[sin q, cos q, dq/DTHETA_MAX, tau/TAU_MAX]
 %                              Y=[Δq/D_THETA_MAX, Δdq/D_DTHETA_MAX]
 %   info.scenario  各行が属するシナリオの添字、info.k 遷移の添字
 if nargin < 3, opts = struct(); end
-if ~isfield(opts,'excludeAtLimit'), opts.excludeAtLimit = true; end
+if ~isfield(opts,'excludeAtLimit'), opts.excludeAtLimit = false; end
 if ~isfield(opts,'features'), opts.features = 'raw'; end
 if ischar(split), split = {split}; end
 X = [];  Y = [];  sIdx = [];  kIdx = [];

@@ -1,0 +1,427 @@
+{
+  "validation": [
+    {
+      "nErrors": 0,
+      "metrics": {
+        "atLimitFraction": 0.0661424919338211,
+        "modelResidualRatio": 0.034948042420610725,
+        "contactTransitions": 188948,
+        "contactDynamicTransitions": {
+          "neg": 7047,
+          "pos": 5092
+        },
+        "nTransition": 2.856681E+6
+      },
+      "checks": {
+        "name": "すべて有限",
+        "pass": true,
+        "value": 0
+      }
+    },
+    {
+      "nErrors": 0,
+      "metrics": {
+        "atLimitFraction": 0.0661424919338211,
+        "modelResidualRatio": 0.034948042420610725,
+        "contactTransitions": 188948,
+        "contactDynamicTransitions": {
+          "neg": 7047,
+          "pos": 5092
+        },
+        "nTransition": 2.856681E+6
+      },
+      "checks": {
+        "name": "|tau| <= tauPeak",
+        "pass": true,
+        "value": 860.4000244140625
+      }
+    },
+    {
+      "nErrors": 0,
+      "metrics": {
+        "atLimitFraction": 0.0661424919338211,
+        "modelResidualRatio": 0.034948042420610725,
+        "contactTransitions": 188948,
+        "contactDynamicTransitions": {
+          "neg": 7047,
+          "pos": 5092
+        },
+        "nTransition": 2.856681E+6
+      },
+      "checks": {
+        "name": "|dq| < qdMax",
+        "pass": true,
+        "value": 4.5431361198425293
+      }
+    },
+    {
+      "nErrors": 0,
+      "metrics": {
+        "atLimitFraction": 0.0661424919338211,
+        "modelResidualRatio": 0.034948042420610725,
+        "contactTransitions": 188948,
+        "contactDynamicTransitions": {
+          "neg": 7047,
+          "pos": 5092
+        },
+        "nTransition": 2.856681E+6
+      },
+      "checks": {
+        "name": "q が可動範囲 ±3° 以内",
+        "pass": true,
+        "value": [
+          -158.65320498456529,
+          65.638042791741668
+        ]
+      }
+    },
+    {
+      "nErrors": 0,
+      "metrics": {
+        "atLimitFraction": 0.0661424919338211,
+        "modelResidualRatio": 0.034948042420610725,
+        "contactTransitions": 188948,
+        "contactDynamicTransitions": {
+          "neg": 7047,
+          "pos": 5092
+        },
+        "nTransition": 2.856681E+6
+      },
+      "checks": {
+        "name": "配列長の整合 (q,dq = K+1, tau,atLimit = K)",
+        "pass": true,
+        "value": 0
+      }
+    },
+    {
+      "nErrors": 0,
+      "metrics": {
+        "atLimitFraction": 0.0661424919338211,
+        "modelResidualRatio": 0.034948042420610725,
+        "contactTransitions": 188948,
+        "contactDynamicTransitions": {
+          "neg": 7047,
+          "pos": 5092
+        },
+        "nTransition": 2.856681E+6
+      },
+      "checks": {
+        "name": "シナリオ名が一意",
+        "pass": true,
+        "value": 0
+      }
+    },
+    {
+      "nErrors": 0,
+      "metrics": {
+        "atLimitFraction": 0.0661424919338211,
+        "modelResidualRatio": 0.034948042420610725,
+        "contactTransitions": 188948,
+        "contactDynamicTransitions": {
+          "neg": 7047,
+          "pos": 5092
+        },
+        "nTransition": 2.856681E+6
+      },
+      "checks": {
+        "name": "benchmark は split=benchmark のみ",
+        "pass": true,
+        "value": 12
+      }
+    },
+    {
+      "nErrors": 0,
+      "metrics": {
+        "atLimitFraction": 0.0661424919338211,
+        "modelResidualRatio": 0.034948042420610725,
+        "contactTransitions": 188948,
+        "contactDynamicTransitions": {
+          "neg": 7047,
+          "pos": 5092
+        },
+        "nTransition": 2.856681E+6
+      },
+      "checks": {
+        "name": "train/val/test がそろっている（100 本以上のとき）",
+        "pass": true,
+        "value": 0
+      }
+    },
+    {
+      "nErrors": 0,
+      "metrics": {
+        "atLimitFraction": 0.0661424919338211,
+        "modelResidualRatio": 0.034948042420610725,
+        "contactTransitions": 188948,
+        "contactDynamicTransitions": {
+          "neg": 7047,
+          "pos": 5092
+        },
+        "nTransition": 2.856681E+6
+      },
+      "checks": {
+        "name": "正規化統計 = train 全遷移の統計",
+        "pass": true,
+        "value": 0
+      }
+    },
+    {
+      "nErrors": 0,
+      "metrics": {
+        "atLimitFraction": 0.0661424919338211,
+        "modelResidualRatio": 0.034948042420610725,
+        "contactTransitions": 188948,
+        "contactDynamicTransitions": {
+          "neg": 7047,
+          "pos": 5092
+        },
+        "nTransition": 2.856681E+6
+      },
+      "checks": {
+        "name": "リミット拘束の割合 < 30%",
+        "pass": true,
+        "value": 0.0661424919338211
+      }
+    },
+    {
+      "nErrors": 0,
+      "metrics": {
+        "atLimitFraction": 0.0661424919338211,
+        "modelResidualRatio": 0.034948042420610725,
+        "contactTransitions": 188948,
+        "contactDynamicTransitions": {
+          "neg": 7047,
+          "pos": 5092
+        },
+        "nTransition": 2.856681E+6
+      },
+      "checks": {
+        "name": "解析モデルの 1 ステップ加速度残差 / 加速度 RMS < 0.5",
+        "pass": true,
+        "value": 0.034948042420610725
+      }
+    },
+    {
+      "nErrors": 0,
+      "metrics": {
+        "atLimitFraction": 0.0661424919338211,
+        "modelResidualRatio": 0.034948042420610725,
+        "contactTransitions": 188948,
+        "contactDynamicTransitions": {
+          "neg": 7047,
+          "pos": 5092
+        },
+        "nTransition": 2.856681E+6
+      },
+      "checks": {
+        "name": "接触シナリオが −側リミットに接触",
+        "pass": true,
+        "value": -158.65320498456529
+      }
+    },
+    {
+      "nErrors": 0,
+      "metrics": {
+        "atLimitFraction": 0.0661424919338211,
+        "modelResidualRatio": 0.034948042420610725,
+        "contactTransitions": 188948,
+        "contactDynamicTransitions": {
+          "neg": 7047,
+          "pos": 5092
+        },
+        "nTransition": 2.856681E+6
+      },
+      "checks": {
+        "name": "接触シナリオが +側リミットに接触",
+        "pass": true,
+        "value": 65.638042791741668
+      }
+    },
+    {
+      "nErrors": 0,
+      "metrics": {
+        "atLimitFraction": 0.0661424919338211,
+        "modelResidualRatio": 0.034948042420610725,
+        "contactTransitions": 188948,
+        "contactDynamicTransitions": {
+          "neg": 7047,
+          "pos": 5092
+        },
+        "nTransition": 2.856681E+6
+      },
+      "checks": {
+        "name": "接触の遷移が 1000 件以上",
+        "pass": true,
+        "value": 188948
+      }
+    },
+    {
+      "nErrors": 0,
+      "metrics": {
+        "atLimitFraction": 0.0661424919338211,
+        "modelResidualRatio": 0.034948042420610725,
+        "contactTransitions": 188948,
+        "contactDynamicTransitions": {
+          "neg": 7047,
+          "pos": 5092
+        },
+        "nTransition": 2.856681E+6
+      },
+      "checks": {
+        "name": "動的な接触の遷移が各側 1000 件以上",
+        "pass": true,
+        "value": [
+          7047,
+          5092
+        ]
+      }
+    }
+  ],
+  "coverage": {
+    "nTransition": {
+      "learning": 2.79E+6,
+      "benchmark": 66681
+    },
+    "occupancy3D": 0.255625,
+    "occupancy2D": {
+      "theta_dtheta": 0.875,
+      "theta_tau": 0.695,
+      "dtheta_tau": 0.7825
+    },
+    "occupancy1D": {
+      "theta": 1,
+      "dtheta": 0.9,
+      "tau": 1
+    },
+    "bins": 20,
+    "benchmarkInOccupied3D": 0.94704638502721916,
+    "benchmarkInOccupied2D": {
+      "theta_dtheta": 1,
+      "theta_tau": 0.9989952160285539,
+      "dtheta_tau": 0.9996250806076693
+    },
+    "thetaRegions": {
+      "upright_pm10deg": 160019,
+      "nearPosLimit_10deg": 252247,
+      "nearNegLimit_10deg": 267277
+    },
+    "frequency": {
+      "tau": {
+        "fCover40dB_Hz": 61.1572265625,
+        "minBandPower_dB": -21.676633080971278,
+        "fPeak_Hz": 9.27734375
+      },
+      "dq": {
+        "fCover40dB_Hz": 36.376953125,
+        "minBandPower_dB": -34.302496048094341,
+        "fPeak_Hz": 0.244140625
+      },
+      "nTrajectories": 382
+    },
+    "contact": {
+      "nScenarios": 56,
+      "samplesWithin3deg": {
+        "negLimit": 122092,
+        "posLimit": 111901
+      },
+      "samplesWithin1deg": {
+        "negLimit": 107585,
+        "posLimit": 98101
+      },
+      "flaggedTransitions": 188948,
+      "flaggedFraction": 0.0661424919338211,
+      "flaggedTransitionsInContactScenarios": 188948,
+      "flaggedFractionInContactScenarios": 0.56912048192771081,
+      "maxPenetrationDeg": {
+        "neg": 0.65320498456528875,
+        "pos": 0.63804279174166412
+      },
+      "firstImpactSpeed": {
+        "neg": {
+          "n": 40,
+          "min": 1.2182310819625854,
+          "median": 4.1967196464538574,
+          "max": 4.3772182464599609
+        },
+        "pos": {
+          "n": 33,
+          "min": 1.9632978439331055,
+          "median": 4.2340946197509766,
+          "max": 4.419675350189209
+        }
+      },
+      "dynamicTransitions": {
+        "neg": 7047,
+        "pos": 5092
+      },
+      "staticPressingTransitions": 176809,
+      "staticPressingFraction": 0.935754810847429,
+      "byPattern": {
+        "contact_fall": {
+          "scenarios": 12,
+          "flaggedTransitions": 24047,
+          "transitions": 36000
+        },
+        "contact_drive": {
+          "scenarios": 24,
+          "flaggedTransitions": 36726,
+          "transitions": 96000
+        },
+        "contact_bln": {
+          "scenarios": 20,
+          "flaggedTransitions": 128175,
+          "transitions": 200000
+        }
+      }
+    }
+  },
+  "manifest": {
+    "created": "2026/10/06 22:27:05",
+    "preset": "full",
+    "fsRaw": 8000,
+    "fsData": 1000,
+    "nScenario": 394,
+    "nTrain": 269,
+    "nVal": 53,
+    "nTest": 60,
+    "nBenchmark": 12,
+    "nTransition": 2.856681E+6,
+    "qFixedDeg": [
+      0,
+      0,
+      75.0684,
+      0,
+      0,
+      0
+    ],
+    "limitTolDeg": 0.1,
+    "downsample": "状態は瞬時値を間引き、トルクは区間平均（j2Downsample）",
+    "params": {
+      "M": 6.0856654931029244,
+      "mgL": 73.24512452011048,
+      "Fc": 23.82,
+      "Bv": 1.42,
+      "eps": 0.013004454926624737,
+      "qMin": -2.7576202181510405,
+      "qMax": 1.1344640137963142,
+      "qdMax": 5.2359877559829888,
+      "tauRated": 286.8,
+      "tauPeak": 860.40000000000009,
+      "tauRef": 286.8,
+      "qTrainMin": -2.1738075833589372,
+      "qTrainMax": 0.55065137900421091,
+      "qFixed": [
+        0,
+        0,
+        1.3101907442041112,
+        0,
+        0,
+        0
+      ],
+      "fsSim": 8000,
+      "fsData": 1000
+    },
+    "parentCommit": "5a7c690ed4088881ede4b2452c2b78028d236285",
+    "matlab": "25.1.0.2973910 (R2025a) Update 1"
+  }
+}

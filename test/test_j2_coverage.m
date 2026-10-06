@@ -42,6 +42,29 @@ classdef test_j2_coverage < matlab.unittest.TestCase
             tc.verifyLessThan(M.benchmarkInOccupied3D, 0.2);
         end
 
+        function contactMetricsAndFigure(tc)
+            jp = j2Params();  ds = coverageDataset(false);
+            K = 3000;  tol = deg2rad(0.1);
+            q = linspace(jp.qMin + deg2rad(5), jp.qMax - deg2rad(5), K+1)';
+            q(1:1000) = jp.qMin - deg2rad(0.2);  q(end-499:end) = jp.qMax + deg2rad(0.2);
+            dq = 0.5*sin(0.3*(1:K+1)');  dq(1:200) = 0;                  % 先頭 200 点は静止して押し付け
+            tau = zeros(K,1);
+            lim = @(x) x <= jp.qMin + tol | x >= jp.qMax - tol;
+            c = struct('name','contact_fall_001','pattern','contact_fall','type','excitation','phase',3, ...
+                'split','train','seed',9,'q',q,'dq',dq,'tau',tau,'tauInst',tau,'qref',[], ...
+                'atLimit',lim(q(1:end-1)) | lim(q(2:end)),'nTransition',K);
+            ds.scen(end+1) = c;
+            M = j2Coverage(ds, tc.outDir);
+            tc.verifyEqual(M.contact.nScenarios, 1);
+            tc.verifyTrue(isfile(fullfile(tc.outDir,'coverage_contact.png')));
+            tc.verifyEqual(M.contact.flaggedTransitions, nnz(c.atLimit));
+            % 動的 = 動いている接触。負側は先頭 1000 遷移のうち静止 200 を除く、正側は末尾 500
+            tc.verifyEqual(M.contact.dynamicTransitions.neg, 800, 'AbsTol', 2);
+            tc.verifyEqual(M.contact.dynamicTransitions.pos, 500, 'AbsTol', 2);
+            tc.verifyGreaterThan(M.contact.staticPressingFraction, 0.1);
+            tc.verifyEqual(M.contact.maxPenetrationDeg.neg, 0.2, 'AbsTol', 1e-6);
+        end
+
         function frequencyMetricsFindTheBand(tc)
             % 20 Hz 帯域制限ノイズ: −40 dB 以内の被覆は 20 Hz 付近まで、ピークは 20 Hz 未満
             ds = coverageDataset(false);

@@ -28,10 +28,15 @@ switch s.type
             case 'micro'
                 % 摩擦・粘性域: 初期姿勢の重力保持トルクのまわりに微小トルク
                 u = -jp.mgL*sin(s.q0) + j2Signal('bln', tVec, amp, struct('fMax',s.fMax,'seed',s.seed));
-            otherwise    % bln_normal / bln_high / bln_low / freefall
+            case 'contact_drive'
+                % 側 s.side のリミットへ ampRel·τ_ref で押し、tFlip で反転（ampRel2·τ_ref で反対側へ）
+                u = s.side * jp.tauRef * (s.ampRel*(tVec < s.tFlip) - s.ampRel2*(tVec >= s.tFlip));
+            case 'contact_bln'
+                u = s.side*s.ampRel2*jp.tauRef + j2Signal('bln', tVec, amp, struct('fMax',s.fMax,'seed',s.seed));
+            otherwise    % bln_normal / bln_high / bln_low / freefall / contact_fall
                 u = j2Signal('bln', tVec, amp, struct('fMax',s.fMax,'seed',s.seed));
         end
-        setJ2Barrier(models.excite, s.qSoftFrac, 0.60);
+        setJ2Barrier(models.excite, s.qSoftFrac, s.dqSoftFrac);
         o = runJ2Sim(models.excite, tVec, u, s.q0, s.dq0);
         raw.q0 = s.q0;  raw.dq0 = s.dq0;
 

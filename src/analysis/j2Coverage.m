@@ -3,7 +3,7 @@ function M = j2Coverage(ds, outDir, opts)
 %   M = J2COVERAGE(ds, outDir, opts)
 %     ds      genJ2Dataset の出力（または data/j2_dataset_<preset>.mat を load したもの）
 %     outDir  PNG の保存先（例: reports/issue-9）
-%     opts.excludeAtLimit  リミット拘束の遷移を除いて評価する（既定 true。学習用フラットデータと同じ扱い）
+%     opts.excludeAtLimit  リミット拘束の遷移を除いて評価する（既定 false。リミット接触シナリオ #11 の追加後は含める）
 %     opts.nBins           占有率の 1 次元あたりのビン数（既定 20。引継ぎ資料の n_bins）
 %   出力 PNG:
 %     coverage_timeseries_A/B/C.png   時系列（θ, θ̇, τ）。A: 広域励振、B: 構造的（ステップ・微小・保持・リミット近傍）、C: PTP ベンチマーク
@@ -11,9 +11,10 @@ function M = j2Coverage(ds, outDir, opts)
 %     coverage_phase_compare.png      位相平面 3 種の学習系とベンチマークの比較
 %     coverage_frequency.png          周波数カバレッジ（τ と θ̇ の PSD をパターン群別、全体、20 Hz の帯域線）
 %     coverage_spectrogram.png        スペクトログラム（チャープと BLN）
+%     coverage_contact.png            リミット接触（接触シナリオの時系列、リミット近傍の位相平面）。接触シナリオがある場合のみ
 %   M: 数値指標（3 次元占有率、2 次元占有率、ベンチマークが学習系の占有セルに入る割合、周波数の被覆帯域など）
 if nargin < 3, opts = struct(); end
-if ~isfield(opts,'excludeAtLimit'), opts.excludeAtLimit = true; end
+if ~isfield(opts,'excludeAtLimit'), opts.excludeAtLimit = false; end
 if ~isfield(opts,'nBins'), opts.nBins = 20; end
 if ~isfolder(outDir), mkdir(outDir); end
 jp = j2Params();
@@ -55,6 +56,8 @@ plotTimeSeries(S, outDir, jp);
 plotPhasePlanes(Xl, Xb, outDir, jp, M);
 M.frequency = plotFrequency(S, outDir, jp);
 plotSpectrogram(S, outDir, jp);
+M.contact = contactMetrics(S, jp);
+if M.contact.nScenarios > 0, plotContact(S, outDir, jp); end
 end
 
 % ======================= 指標のヘルパ =======================
@@ -247,4 +250,104 @@ for j = 1:numel(pick)
 end
 title(tl, 'スペクトログラム（上: トルク τ、下: 角速度 ω、0〜60 Hz、dB）');
 exportgraphics(f, fullfile(outDir,'coverage_spectrogram.png'), 'Resolution', 100);  close(f);
+end
+
+% ======================= リミット接触 =======================
+function C = contactMetrics(S, jp)
+tol = deg2rad(0.1);
+isC = startsWith({S.pattern}, 'contact_');
+C.nScenarios = nnz(isC);
+allQ = vertcat(S.q);
+C.samplesWithin3deg.negLimit = nnz(allQ <= jp.qMin + deg2rad(3));
+C.samplesWithin3deg.posLimit = nnz(allQ >= jp.qMax - deg2rad(3));
+C.samplesWithin1deg.negLimit = nnz(allQ <= jp.qMin + deg2rad(1));
+C.samplesWithin1deg.posLimit = nnz(allQ >= jp.qMax - deg2rad(1));
+C.flaggedTransitions = sum(arrayfun(@(s) nnz(s.atLimit), S));
+C.flaggedFraction = C.flaggedTransitions / sum([S.nTransition]);
+if C.nScenarios == 0, return; end
+Sc = S(isC);
+C.flaggedTransitionsInContactScenarios = sum(arrayfun(@(s) nnz(s.atLimit), Sc));
+C.flaggedFractionInContactScenarios = C.flaggedTransitionsInContactScenarios / sum([Sc.nTransition]);
+% 最大めり込み、初回接触時の速度（各シナリオで最初にリミットへ到達した時点の dq。側ごと）
+C.maxPenetrationDeg.neg = rad2deg(max(0, jp.qMin - min(vertcat(Sc.q))));
+C.maxPenetrationDeg.pos = rad2deg(max(0, max(vertcat(Sc.q)) - jp.qMax));
+vN = [];  vP = [];
+for k = 1:numel(Sc)
+    iN = find(Sc(k).q <= jp.qMin + tol, 1);  iP = find(Sc(k).q >= jp.qMax - tol, 1);
+    if ~isempty(iN), vN(end+1) = abs(Sc(k).dq(iN)); end %#ok<AGROW>
+    if ~isempty(iP), vP(end+1) = abs(Sc(k).dq(iP)); end %#ok<AGROW>
+end
+C.firstImpactSpeed.neg = struct('n',numel(vN),'min',nz(vN,@min),'median',nz(vN,@median),'max',nz(vN,@max));
+C.firstImpactSpeed.pos = struct('n',numel(vP),'min',nz(vP,@min),'median',nz(vP,@median),'max',nz(vP,@max));
+% 動的な接触（動いている・速度が変化する）と、静止して押し付けている接触の内訳
+nDyn = [0 0];  nStat = 0;
+for k = 1:numel(Sc)
+    f = Sc(k).atLimit;  dyn = f & (abs(Sc(k).dq(1:end-1)) > 0.02 | abs(diff(Sc(k).dq)) > 0.005);
+    low = Sc(k).q(1:end-1) <= jp.qMin + tol;
+    nDyn = nDyn + [nnz(dyn & low), nnz(dyn & ~low)];  nStat = nStat + nnz(f & ~dyn);
+end
+C.dynamicTransitions = struct('neg', nDyn(1), 'pos', nDyn(2));
+C.staticPressingTransitions = nStat;
+C.staticPressingFraction = nStat / C.flaggedTransitionsInContactScenarios;
+pats = unique({Sc.pattern}, 'stable');
+for i = 1:numel(pats)
+    idx = strcmp({Sc.pattern}, pats{i});
+    C.byPattern.(pats{i}) = struct('scenarios', nnz(idx), ...
+        'flaggedTransitions', sum(arrayfun(@(s) nnz(s.atLimit), Sc(idx))), ...
+        'transitions', sum([Sc(idx).nTransition]));
+end
+end
+
+function v = nz(x, f)
+if isempty(x), v = NaN; else, v = f(x); end
+end
+
+function plotContact(S, outDir, jp)
+d2r = 180/pi;  fs = jp.fsData;
+f = figure('Visible','off','Position',[0 0 1900 1250],'Color','w');
+tl = tiledlayout(f, 4, 3, 'TileSpacing','compact','Padding','compact');
+% --- 上 3 行: 接触シナリオの時系列（fall / drive / bln）---
+pick = {'contact_fall','contact_drive','contact_bln'};
+for j = 1:3
+    k = find(strcmp({S.pattern}, pick{j}), 1);
+    if isempty(k), for i = 1:3, nexttile(tl,(i-1)*3+j); axis off; end, continue; end
+    s = S(k);  t = (0:numel(s.q)-1)'/fs;
+    rows = {s.q*d2r, s.dq, [s.tau; s.tau(end)]};
+    ylabs = {'\theta [deg]','\omega [rad/s]','\tau [N·m]'};
+    for i = 1:3
+        ax = nexttile(tl,(i-1)*3+j);  hold(ax,'on');  grid(ax,'on');
+        plot(ax, t, rows{i}, 'LineWidth', 1);
+        if i == 1, yline(ax,[jp.qMin jp.qMax]*d2r,'r--');  title(ax, sprintf('%s（%s）', s.pattern, s.name), 'Interpreter','none');  ylim(ax,[-175 80]);
+        elseif i == 2, yline(ax,[-jp.qdMax jp.qdMax],'r--');  ylim(ax,[-6 6]);
+        else, yline(ax,[-jp.tauPeak jp.tauPeak],'r--');  xlabel(ax,'t [s]');  ylim(ax,[-950 950]); end
+        if j == 1, ylabel(ax, ylabs{i}); end
+    end
+end
+% --- 下 1 行: リミット近傍（±5°）の位相平面。灰色=全データ、赤=リミット拘束フラグの遷移 ---
+allQ = [];  allDq = [];  allTau = [];
+for k = 1:numel(S)
+    sc = S(k);
+    allQ = [allQ; sc.q(1:end-1)];  allDq = [allDq; sc.dq(1:end-1)];  allTau = [allTau; sc.tau]; %#ok<AGROW>
+end
+fl = false(size(allQ));  o = 0;
+for k = 1:numel(S), n = numel(S(k).tau);  fl(o+1:o+n) = S(k).atLimit;  o = o + n; end
+sides = {'−側リミット付近', jp.qMin, [-1 5]; '+側リミット付近', jp.qMax, [-5 1]};
+for c = 1:2
+    ax = nexttile(tl, 9 + c);  hold(ax,'on');  grid(ax,'on');
+    lim = sides{c,2};  w = sides{c,3};
+    near = allQ >= lim + deg2rad(w(1)) & allQ <= lim + deg2rad(w(2));
+    plot(ax, (allQ(near & ~fl) - lim)*d2r, allDq(near & ~fl), '.', 'Color',[0.6 0.6 0.6], 'MarkerSize', 3);
+    plot(ax, (allQ(near & fl) - lim)*d2r, allDq(near & fl), '.', 'Color',[0.85 0.1 0.1], 'MarkerSize', 4);
+    xline(ax, 0, 'k--');  xlabel(ax, '\theta − リミット [deg]');  ylabel(ax, '\omega [rad/s]');
+    title(ax, sprintf('%s: θ–ω（赤=接触フラグ、%d 点）', sides{c,1}, nnz(near & fl)));
+end
+ax = nexttile(tl, 12);  hold(ax,'on');  grid(ax,'on');
+nearAny = allQ <= jp.qMin + deg2rad(5) | allQ >= jp.qMax - deg2rad(5);
+side = sign(allQ);  dist = (jp.qMax - allQ).*(side>0) + (allQ - jp.qMin).*(side<=0);   % リミットまでの距離（正=内側）
+plot(ax, dist(nearAny & ~fl)*d2r, allTau(nearAny & ~fl), '.', 'Color',[0.6 0.6 0.6], 'MarkerSize', 3);
+plot(ax, dist(nearAny & fl)*d2r, allTau(nearAny & fl), '.', 'Color',[0.85 0.1 0.1], 'MarkerSize', 4);
+xline(ax, 0, 'k--');  xlabel(ax, 'リミットまでの距離 [deg]（負=めり込み）');  ylabel(ax, '\tau [N·m]');
+title(ax, '両側: リミットまでの距離 – τ（赤=接触フラグ）');
+title(tl, 'リミット接触（上: 接触シナリオの時系列、下: リミット近傍 ±5° の位相平面）');
+exportgraphics(f, fullfile(outDir,'coverage_contact.png'), 'Resolution', 100);  close(f);
 end
