@@ -6,3 +6,7 @@ slprj/
 *.autosave
 # 引継ぎ資料（公開可否が未確定）
 Neural State Model*.md
+
+# 学習用の Python 仮想環境（システムの PyTorch を使い h5py のみ追加）
+.venv/
+__pycache__/
