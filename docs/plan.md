@@ -2,6 +2,19 @@
 
 要件は [requirements.md](requirements.md)。各フェーズを 1 つ以上の issue にし、「issue → ブランチ → 作業 → 報告 → 指示でコミット → 指示で PR」で回す。各フェーズ末尾に**検証ゲート**を置く。
 
+## 進捗（2026-10-06 時点）
+
+| フェーズ | 状態 | issue / PR | レポート |
+|---|---|---|---|
+| Phase 0 基盤整備とスパイク | 完了（G0 ✔） | #3 / #4 | [phase0_report.md](phase0_report.md) |
+| Phase 1 J2 単軸プラントと物理検証 | 完了（G1 ✔） | #5 / #6 | [phase1_report.md](phase1_report.md) |
+| Phase 2 励振・シナリオ・PTP ベンチマーク | 完了（G2 ✔） | #7 / #8 | [phase2_report.md](phase2_report.md) |
+| Phase 3 データ生成とカバレッジ評価 | 完了（G3 ✔） | #9 / #10 | [phase3_report.md](phase3_report.md) |
+| 追加: リミット接触シナリオ | 完了 | #11 / #12 | [limit_contact_report.md](limit_contact_report.md) |
+| Phase 4 まとめ | 実施中 | #13 | [phase4_report.md](phase4_report.md) |
+
+最終成果物: 394 シナリオ・2,856,681 遷移（1 kHz）のデータセット。仕様は [dataset.md](dataset.md)、使い方は [../README.md](../README.md)。
+
 ## Phase 0: 基盤整備とスパイク
 
 目的: 未決事項（requirements §7 の #1〜#3, #5）を実測で潰す。
@@ -55,8 +68,9 @@
 
 ## Phase 4: まとめ
 
-- 4.1 全体の再現確認（シード固定で同一データ）
-- 4.2 ドキュメント整備、後続課題（フェーズ3 能動学習、J3 拡張）の issue 化
+- 4.1 全体の再現確認: キャッシュを使わず、別プロセスで種別ごとの代表シナリオを再生成し、保存済みデータと一致するか確認（`tools/j2_repro_check.m`）
+- 4.2 ドキュメント整備: `README.md`、データセット仕様 `docs/dataset.md`、本計画の進捗
+- 4.3 後続課題の issue 化（優先度付き）
 
 ## issue コメントへの画像埋め込み
 
