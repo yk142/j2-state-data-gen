@@ -37,9 +37,9 @@ classdef test_j2_dataset < matlab.unittest.TestCase
             [X, Y, info] = j2BuildFlat(ds, 'train');
             tc.verifyEqual(size(X,2), 3);  tc.verifyEqual(size(Y,2), 2);
             tc.verifyEqual(size(X,1), numel(info.k));
-            % リミット拘束の遷移は除外される（シナリオ 1 の最後 2 遷移）
-            [X2, ~] = j2BuildFlat(ds, 'train', struct('excludeAtLimit', false));
-            tc.verifyEqual(size(X2,1) - size(X,1), 2);
+            % 既定ではリミット拘束の遷移も含める。excludeAtLimit=true で除外（シナリオ 1 の最後 2 遷移）
+            [X2, ~] = j2BuildFlat(ds, 'train', struct('excludeAtLimit', true));
+            tc.verifyEqual(size(X,1) - size(X2,1), 2);
             [Xs, Ys] = j2BuildFlat(ds, 'train', struct('features','spec'));
             tc.verifyEqual(size(Xs,2), 4);
             tc.verifyEqual(Xs(:,1).^2 + Xs(:,2).^2, ones(size(Xs,1),1), 'AbsTol', 1e-12);
@@ -48,6 +48,24 @@ classdef test_j2_dataset < matlab.unittest.TestCase
             % 複数 split
             [Xa, ~] = j2BuildFlat(ds, {'train','val'});
             tc.verifyGreaterThan(size(Xa,1), size(X,1));
+        end
+
+        function validatorChecksContactScenarios(tc)
+            % 接触シナリオ（contact_*）が両側に接触し、動的な接触が各側 1000 件以上であることを検査
+            jp = j2Params();  ds = syntheticDataset();
+            names0 = {ds.scen.name};  %#ok<NASGU>
+            ds.scen(end+1) = contactScenario(jp, 'contact_drive', 'train', 3000);       % 動的な接触が十分ある
+            R = validateJ2Data(ds, false);
+            nm = {R.checks.name};
+            tc.verifyTrue(R.checks(contains(nm, '−側リミットに接触')).pass);
+            tc.verifyTrue(R.checks(contains(nm, '+側リミットに接触')).pass);
+            tc.verifyTrue(R.checks(contains(nm, '動的な接触')).pass);
+            % 静止して押し付けているだけの接触は「動的」に数えない
+            ds2 = syntheticDataset();
+            ds2.scen(end+1) = contactScenario(jp, 'contact_fall', 'train', 3000);
+            ds2.scen(end).dq(:) = 0;                                                    % 全区間で静止
+            R2 = validateJ2Data(ds2, false);
+            tc.verifyFalse(R2.checks(contains({R2.checks.name}, '動的な接触')).pass);
         end
 
         function validatorFlagsBadData(tc)
@@ -64,6 +82,17 @@ classdef test_j2_dataset < matlab.unittest.TestCase
             tc.verifyTrue(any(contains(names, '有限')));
         end
     end
+end
+
+function s = contactScenario(jp, pattern, split, K)
+% 前半は −側、後半は +側のリミットに接触する合成シナリオ（接触区間では dq が振動する）
+tol = deg2rad(0.1);
+q = linspace(jp.qMin + deg2rad(5), jp.qMax - deg2rad(5), K+1)';
+q(1:1200) = jp.qMin - deg2rad(0.2);  q(end-1199:end) = jp.qMax + deg2rad(0.2);   % 両側で 1200 点ずつ接触
+dq = 0.5*sin(0.3*(1:K+1)');  tau = zeros(K,1);
+atLimit = (q(1:end-1) <= jp.qMin + tol) | (q(2:end) <= jp.qMin + tol) | (q(1:end-1) >= jp.qMax - tol) | (q(2:end) >= jp.qMax - tol);
+s = struct('name',[pattern '_001'],'pattern',pattern,'type','excitation','phase',3,'split',split,'seed',1, ...
+    'q',q,'dq',dq,'tau',tau,'tauInst',tau,'qref',[],'atLimit',atLimit,'nTransition',K);
 end
 
 function ds = syntheticDataset()
@@ -84,8 +113,7 @@ for k = 1:4
 end
 isTr = strcmp({S.split},'train');  X = [];  Y = [];
 for k = find(isTr)
-    ok = ~S(k).atLimit;  Xk = [S(k).q(1:end-1), S(k).dq(1:end-1), S(k).tau];  Yk = [diff(S(k).q), diff(S(k).dq)];
-    X = [X; Xk(ok,:)]; Y = [Y; Yk(ok,:)]; %#ok<AGROW>
+    X = [X; S(k).q(1:end-1), S(k).dq(1:end-1), S(k).tau]; Y = [Y; diff(S(k).q), diff(S(k).dq)]; %#ok<AGROW>
 end
 st.xMean = mean(X,1); st.xStd = std(X,0,1); st.yMean = mean(Y,1); st.yStd = std(Y,0,1);
 dt = 1/jp.fsData;

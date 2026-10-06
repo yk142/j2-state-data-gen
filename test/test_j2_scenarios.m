@@ -13,7 +13,8 @@ classdef test_j2_scenarios < matlab.unittest.TestCase
     properties (TestParameter)
         scenarioName = {'bln_normal_001','bln_high_001','bln_low_001','freefall_001', ...
             'chirp_001','step_001','micro_001','hold_-090_001','hold_+000_001', ...
-            'nearlimit_001','ptp_v70_001'};
+            'nearlimit_001','ptp_v70_001', ...
+            'contact_fall_001','contact_fall_002','contact_drive_001','contact_bln_001'};
     end
 
     methods (TestClassSetup)
@@ -65,6 +66,19 @@ classdef test_j2_scenarios < matlab.unittest.TestCase
             end
             if strcmp(s.pattern,'step')
                 tc.verifyGreaterThan(max(abs(raw.tau)), 0.99*jp.tauPeak);          % 飽和まで駆動している
+            end
+            if startsWith(s.pattern, 'contact_')
+                tol = deg2rad(0.1);
+                tc.verifyGreaterThan(raw.contact, 0);                                  % 実際にリミットへ接触した
+                switch s.pattern
+                    case 'contact_fall'     % 重力方向（開始側）のリミットに衝突
+                        if s.side > 0, tc.verifyGreaterThanOrEqual(max(raw.q), jp.qMax - tol);
+                        else, tc.verifyLessThanOrEqual(min(raw.q), jp.qMin + tol); end
+                    case 'contact_drive'    % 押し付け → 反転 → 反対側へ。両側に接触
+                        tc.verifyGreaterThanOrEqual(max(raw.q), jp.qMax - tol);
+                        tc.verifyLessThanOrEqual(min(raw.q), jp.qMin + tol);
+                end
+                tc.verifyLessThan(max(abs(raw.dq)), jp.qdMax);                         % 衝突速度も上限内
             end
             if strcmp(s.type,'hold')
                 tc.verifyLessThan(rad2deg(max(abs(raw.q - raw.qref))), 3);         % 外乱下でも参照の近傍

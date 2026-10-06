@@ -4,8 +4,9 @@ function R = validateJ2Data(ds, verbose)
 %   R.checks: 検査名・合否・値の構造体配列、R.nErrors: 不合格数、R.metrics: 参考指標。
 %   検査:
 %     有限性 / トルク飽和内 / 速度制限内 / 可動範囲（±3° のめり込みまで）/ 配列長の整合 /
-%     split の整合（重複・ベンチマークの分離）/ 正規化統計が train かつ非拘束のみ由来 /
-%     リミット拘束の割合 / 解析モデルとの 1 ステップ整合（RMS 残差が加速度 RMS の半分未満）
+%     split の整合（重複・ベンチマークの分離）/ 正規化統計が train の全遷移由来 /
+%     リミット拘束の割合 / 解析モデルとの 1 ステップ整合（RMS 残差が加速度 RMS の半分未満）/
+%     接触シナリオ（contact_*）が両側のリミットに実際に接触し、接触遷移が 1000 件以上
 if nargin < 2, verbose = true; end
 jp = j2Params();
 S = ds.scen;
@@ -31,14 +32,13 @@ chk{end+1} = add('benchmark は split=benchmark のみ', all(strcmp({S(isBench).
 % 小さい preset（本数の少ないパターンは train に寄せる）では val/test が無くてよい。100 本以上で必須
 chk{end+1} = add('train/val/test がそろっている（100 本以上のとき）', numel(S) < 100 || all(ismember({'train','val','test'}, {S.split})), 0);
 
-% 正規化統計が train かつ非拘束のみ由来であること（組み立て時と同じ計算で再現）
+% 正規化統計が train の全遷移（拘束を含む）由来であること（組み立て時と同じ計算で再現）
 X = [];  Y = [];
 for k = find(strcmp({S.split},'train'))
-    sc = S(k);  ok = ~sc.atLimit;
-    Xk = [sc.q(1:end-1), sc.dq(1:end-1), sc.tau];  Yk = [diff(sc.q), diff(sc.dq)];
-    X = [X; Xk(ok,:)]; Y = [Y; Yk(ok,:)]; %#ok<AGROW>
+    sc = S(k);
+    X = [X; sc.q(1:end-1), sc.dq(1:end-1), sc.tau];  Y = [Y; diff(sc.q), diff(sc.dq)]; %#ok<AGROW>
 end
-chk{end+1} = add('正規化統計 = train 非拘束の統計', ...
+chk{end+1} = add('正規化統計 = train 全遷移の統計', ...
     max(abs(ds.stats.xMean - mean(X,1))./max(abs(mean(X,1)),1e-9)) < 1e-9 && ...
     max(abs(ds.stats.yStd - std(Y,0,1))./std(Y,0,1)) < 1e-9, 0);
 
@@ -57,6 +57,27 @@ for k = 1:numel(S)
 end
 R.metrics.modelResidualRatio = sqrt(num/den);
 chk{end+1} = add('解析モデルの 1 ステップ加速度残差 / 加速度 RMS < 0.5', R.metrics.modelResidualRatio < 0.5, R.metrics.modelResidualRatio);
+
+% リミット接触シナリオ（pattern が contact_ で始まる）が、群として両側のリミットに実際に接触していること
+isC = startsWith({S.pattern}, 'contact_');
+if any(isC)
+    qc = vertcat(S(isC).q);  tol = deg2rad(0.1);
+    chk{end+1} = add('接触シナリオが −側リミットに接触', min(qc) <= jp.qMin + tol, rad2deg(min(qc)));
+    chk{end+1} = add('接触シナリオが +側リミットに接触', max(qc) >= jp.qMax - tol, rad2deg(max(qc)));
+    nC = sum(arrayfun(@(s) nnz(s.atLimit), S(isC)));
+    R.metrics.contactTransitions = nC;
+    chk{end+1} = add('接触の遷移が 1000 件以上', nC >= 1000, nC);
+    % 接触遷移の大半は静止したまま押し付けている（情報が重複）。動いている接触（衝突・反発・離脱）の件数も側ごとに確認
+    nDynNeg = 0;  nDynPos = 0;
+    for k = find(isC)
+        sc = S(k);
+        dyn = sc.atLimit & (abs(sc.dq(1:end-1)) > 0.02 | abs(diff(sc.dq)) > 0.005);
+        low = sc.q(1:end-1) <= jp.qMin + tol;
+        nDynNeg = nDynNeg + nnz(dyn & low);  nDynPos = nDynPos + nnz(dyn & ~low);
+    end
+    R.metrics.contactDynamicTransitions = struct('neg', nDynNeg, 'pos', nDynPos);
+    chk{end+1} = add('動的な接触の遷移が各側 1000 件以上', nDynNeg >= 1000 && nDynPos >= 1000, [nDynNeg nDynPos]);
+end
 
 R.checks = [chk{:}];
 R.nErrors = nnz(~[R.checks.pass]);
