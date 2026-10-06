@@ -1,0 +1,107 @@
+{
+  "created": "2026/10/06 22:51:28",
+  "preset": "full",
+  "matlab": "25.1.0.2973910 (R2025a) Update 1",
+  "results": [
+    {
+      "name": "bln_high_001",
+      "type": "excitation",
+      "nSample": 40001,
+      "maxAbsDiff_q": 0,
+      "maxAbsDiff_dq": 0,
+      "maxAbsDiff_tau": 0,
+      "bitIdentical": true,
+      "wall": 46.39375
+    },
+    {
+      "name": "freefall_001",
+      "type": "excitation",
+      "nSample": 24001,
+      "maxAbsDiff_q": 0,
+      "maxAbsDiff_dq": 0,
+      "maxAbsDiff_tau": 0,
+      "bitIdentical": true,
+      "wall": 22.655246
+    },
+    {
+      "name": "step_001",
+      "type": "excitation",
+      "nSample": 16001,
+      "maxAbsDiff_q": 0,
+      "maxAbsDiff_dq": 0,
+      "maxAbsDiff_tau": 0,
+      "bitIdentical": true,
+      "wall": 16.44368
+    },
+    {
+      "name": "micro_001",
+      "type": "excitation",
+      "nSample": 80001,
+      "maxAbsDiff_q": 0,
+      "maxAbsDiff_dq": 0,
+      "maxAbsDiff_tau": 0,
+      "bitIdentical": true,
+      "wall": 57.436492
+    },
+    {
+      "name": "hold_-090_001",
+      "type": "hold",
+      "nSample": 40001,
+      "maxAbsDiff_q": 0,
+      "maxAbsDiff_dq": 0,
+      "maxAbsDiff_tau": 0,
+      "bitIdentical": true,
+      "wall": 29.365634
+    },
+    {
+      "name": "nearlimit_001",
+      "type": "hold",
+      "nSample": 80001,
+      "maxAbsDiff_q": 0,
+      "maxAbsDiff_dq": 0,
+      "maxAbsDiff_tau": 0,
+      "bitIdentical": true,
+      "wall": 53.237208
+    },
+    {
+      "name": "ptp_v40_001",
+      "type": "ptp",
+      "nSample": 41346,
+      "maxAbsDiff_q": 0,
+      "maxAbsDiff_dq": 0,
+      "maxAbsDiff_tau": 0,
+      "bitIdentical": true,
+      "wall": 29.695653
+    },
+    {
+      "name": "contact_fall_001",
+      "type": "excitation",
+      "nSample": 24001,
+      "maxAbsDiff_q": 0,
+      "maxAbsDiff_dq": 0,
+      "maxAbsDiff_tau": 0,
+      "bitIdentical": true,
+      "wall": 18.606238
+    },
+    {
+      "name": "contact_drive_001",
+      "type": "excitation",
+      "nSample": 32001,
+      "maxAbsDiff_q": 0,
+      "maxAbsDiff_dq": 0,
+      "maxAbsDiff_tau": 0,
+      "bitIdentical": true,
+      "wall": 25.535221
+    },
+    {
+      "name": "contact_bln_001",
+      "type": "excitation",
+      "nSample": 80001,
+      "maxAbsDiff_q": 0,
+      "maxAbsDiff_dq": 0,
+      "maxAbsDiff_tau": 0,
+      "bitIdentical": true,
+      "wall": 59.248662
+    }
+  ]
+}

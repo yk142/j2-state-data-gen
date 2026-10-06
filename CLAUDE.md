@@ -6,6 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ユーザーとのやり取りは日本語で行うこと。
 
+## 参照先
+
+- `README.md`（使い方）、`docs/dataset.md`（データセット仕様と注意点）、`docs/plan.md`（進捗）、`docs/phase*_report.md`（各フェーズの結果）
+- 再現確認: `matlab -batch "addpath('tools'); j2_repro_check()"`（キャッシュなしで再生成し、保存済み 8 kHz データとのビット一致を確認）
+
 ## 作業サイクル（必須）
 
 1. issue 作成 → ブランチ作成 → 作業
@@ -52,7 +57,7 @@ raw = runJ2Scenario(S(k), struct('excite',mE,'closed',mC));   % 1 シナリオ�
 
 ## 現状
 
-Phase 3 の実装済み（生成・検証・カバレッジ評価。full の生成は進行中）。Phase 2 まで（プラント `src/plant/`、評価 `src/analysis/`、制御・参照軌道 `src/control/`、励振・シナリオ `src/data/`、解析パラメータ `src/model/`、テスト `test/`）。要件・計画は `docs/`。リポジトリ直下には日本語の引継ぎ資料（`Neural State Model 学習データ生成スクリプト 引継ぎ資料…md`、ステータス: 未着手）のみがあり、コード・ビルド・lint・テストの設定はまだ存在しない。git リポジトリではない。実装前に必ず資料を読むこと（各モジュールのコード例と収集計画が載っている）。以下は特に間違えやすい点をまとめたもの。
+Phase 4 まで完了（生成・検証・カバレッジ評価・再現確認・ドキュメント）。Phase 2 まで（プラント `src/plant/`、評価 `src/analysis/`、制御・参照軌道 `src/control/`、励振・シナリオ `src/data/`、解析パラメータ `src/model/`、テスト `test/`）。要件・計画は `docs/`。リポジトリ直下には日本語の引継ぎ資料（`Neural State Model 学習データ生成スクリプト 引継ぎ資料…md`、ステータス: 未着手）のみがあり、コード・ビルド・lint・テストの設定はまだ存在しない。git リポジトリではない。実装前に必ず資料を読むこと（各モジュールのコード例と収集計画が載っている）。以下は特に間違えやすい点をまとめたもの。
 
 ## 目的
 
