@@ -26,7 +26,7 @@ def one_step_predictions(model, phys, d, split, bs=65536):
     model.eval()
     dq_model = []
     for i in range(0, len(xs), bs):
-        dq_model.append(torch.stack(model.delta_physical(xs[i:i + bs]), dim=1).double())
+        dq_model.append(torch.stack(model.delta_physical(xs[i:i + bs], X[i:i + bs]), dim=1).double())
     dq_model = torch.cat(dq_model).numpy()
     q, dq, tau = X[:, 0], X[:, 1], X[:, 2]
     out = {"model": dq_model}
@@ -46,7 +46,10 @@ def one_step_table(model, phys, d, split):
     preds = one_step_predictions(model, phys, d, split)
     grp = np.array([group_of(d["scenarios"]["pattern"][k]) for k in s["scenario_id"]])
     at = s["at_limit"]
-    sel = {"all": np.ones(len(y), bool), "free(接触なし)": ~at, "contact(接触あり)": at}
+    # 接触を、動いている接触（衝突・反発・離脱）と静止押し付けに分ける（MATLAB の検証と同じ定義）
+    dyn = at & ((np.abs(s["X"][:, 1]) > 0.02) | (np.abs(y[:, 1]) > 0.005))
+    sel = {"all": np.ones(len(y), bool), "free(接触なし)": ~at, "contact(接触あり)": at,
+           "contact:dynamic(動的な接触)": dyn, "contact:static(静止押し付け)": at & ~dyn}
     for g in sorted(set(grp)):
         sel[f"group:{g}"] = grp == g
     table = {}
