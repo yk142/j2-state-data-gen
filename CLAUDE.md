@@ -51,6 +51,8 @@ raw = runJ2Scenario(S(k), struct('excite',mE,'closed',mC));   % 1 シナリオ�
 - 他言語向け: `j2ExportFlat(ds, 'x.h5')`（HDF5、h5py から (N,d) で見える。インデックスは 0 始まり）または `x.mat`（v7）。Python 側の検証は `python tools/verify_flat_export.py x.h5 x.mat`
 - 検証: `validateJ2Data(ds)`、フラット化: `[X,Y] = j2BuildFlat(ds,'train')`（`features='spec'` で引継ぎ資料の正規化形式）、カバレッジ: `j2Coverage(ds, outDir)`（PNG 7 枚と指標）
 - 1 kHz 変換は、状態は瞬時値の間引き、トルクは区間平均（フィルタなし。遷移データのため）。リミット拘束（リミットから 0.1° 以内または外側）の遷移にはフラグを付けるが、既定では除外しない
+- 学習・評価（Python）: `.venv`（システムの PyTorch ＋ h5py）。`.venv/bin/python python/train.py --run <名前>` → `data/train/<名前>/`、`.venv/bin/python python/evaluate.py --run <名前> --report-dir reports/...`。単体テストは `.venv/bin/python -m unittest discover -s python/tests`。学習は CPU で 1 エポック約 1 分（40 エポックで約 40 分）。長いので `nohup` でバックグラウンド実行する
+- **全長の開ループ再生で評価しない**: θ=0 まわりが不安定（成長率 約 3.5/s）で、正確なモデルでも数秒で発散する。長い区間は制御器（PD＋FF）を閉ループにして評価する（`python/j2nsm/evaluate_lib.py`）
 - 単一テストは `runtests('test/test_j2_plant.m','Name','test_j2_plant/gravityIsPendulum')`
 - 親資産のパスは環境変数 `J2_PARENT_DIR` で上書き可（既定 `~/matlab-projects/robotArmSurrogate-matlab`）
 - MATLAB MCP サーバー経由の実行は 120 s でバックグラウンド化される。長い実行は完了通知を待つ

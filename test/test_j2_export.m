@@ -61,12 +61,34 @@ classdef test_j2_export < matlab.unittest.TestCase
             tc.verifyEqual(cellstr(h5read(f,'/scenarios/phase'))', {'1','1','2','benchmark','3'});
         end
 
+        function referenceAngleIsExported(tc)
+            f = fullfile(tc.tmp, 'q.h5');
+            j2ExportFlat(tc.ds, f, struct('dtype','double'));
+            for sp = {'test','benchmark','train'}
+                qr = h5read(f, ['/' sp{1} '/qref']);
+                [~, ~, inf1] = j2BuildFlat(tc.ds, sp{1});
+                for r = [1 numel(qr)]
+                    sc = tc.ds.scen(inf1.scenario(r));
+                    if isempty(sc.qref), tc.verifyTrue(isnan(qr(r)));
+                    else, tc.verifyEqual(qr(r), sc.qref(inf1.k(r)), 'AbsTol', 1e-12); end
+                end
+            end
+            tc.verifyTrue(all(isnan(h5read(f,'/train/qref')) | true));
+            tc.verifyTrue(any(isnan(h5read(f,'/train/qref'))));                     % 励振シナリオは NaN
+            tc.verifyFalse(any(isnan(h5read(f,'/test/qref'))));                     % 姿勢保持は参照あり
+            tc.verifyFalse(any(isnan(h5read(f,'/benchmark/qref'))));                % PTP は参照あり
+        end
+
         function statsScaleAndAttributes(tc)
             f = fullfile(tc.tmp, 'c.h5');
             j2ExportFlat(tc.ds, f);
             tc.verifyEqual(h5read(f,'/stats/x_mean')', tc.ds.stats.xMean, 'AbsTol', 1e-15);
             tc.verifyEqual(h5read(f,'/stats/y_std')',  tc.ds.stats.yStd,  'AbsTol', 1e-15);
             tc.verifyEqual(h5read(f,'/scale/TAU_MAX'), tc.ds.scale.TAU_MAX);
+            jp = j2Params();                                                % 解析モデルの係数（基準線の計算に使う）
+            for nm = {'M','mgL','Fc','Bv','eps','qMin','qMax','qdMax','tauRated','tauPeak'}
+                tc.verifyEqual(h5read(f, ['/physics/' nm{1}]), jp.(nm{1}), 'AbsTol', 1e-12, nm{1});
+            end
             tc.verifyEqual(h5readatt(f,'/','preset'), 'synthetic');
             tc.verifyEqual(h5readatt(f,'/','fs_data_hz'), 1000);
             tc.verifyEqual(h5readatt(f,'/','q_fixed_deg')', tc.ds.manifest.qFixedDeg, 'AbsTol', 1e-12);
@@ -106,6 +128,7 @@ classdef test_j2_export < matlab.unittest.TestCase
             tc.verifyEqual(L.scenario_name', {tc.ds.scen.name});
             tc.verifyEqual(L.stats_x_mean, tc.ds.stats.xMean(:));
             tc.verifyEqual(L.scale_D_DTHETA_MAX, tc.ds.scale.D_DTHETA_MAX);
+            tc.verifyEqual(L.physics_mgL, j2Params().mgL, 'AbsTol', 1e-12);
             tc.verifyEqual(class(L.train_scenario_id), 'int32');
             % 先頭バイトで v7（HDF5 ではない）であることを確認 → scipy.io.loadmat で読める
             fid = fopen(f); hdr = fread(fid, 8, '*char')'; fclose(fid);
@@ -129,6 +152,7 @@ for k = 1:size(specs,1)
     s.seed = 100 + k;
     s.q = deg2rad(-100) + 0.01*cumsum(randn(rs,K+1,1));  s.dq = 0.1*randn(rs,K+1,1);
     s.tau = 50*randn(rs,K,1);  s.tauInst = s.tau;  s.qref = [];
+    if k == 3 || k == 4, s.qref = s.q + 0.001*randn(rs,K+1,1); end              % 閉ループ（姿勢保持・PTP）は参照あり
     s.atLimit = false(K,1);  if k == 5, s.atLimit(5:15) = true; end
     s.nTransition = K;
     S(k) = s; %#ok<AGROW>

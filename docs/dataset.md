@@ -83,10 +83,12 @@ j2ExportFlat(ds, 'data/export/j2_flat_full.h5', struct('dtype','double'));   % �
 | `/<split>/scenario_id` | (N,) int32 | `/scenarios/*` の添字（**0 始まり**） |
 | `/<split>/step` | (N,) int32 | シナリオ内の遷移番号（**0 始まり**） |
 | `/<split>/at_limit` | (N,) uint8 | リミット拘束の遷移なら 1 |
+| `/<split>/qref` | (N,) | 参照角 [rad]（姿勢保持・PTP の閉ループのみ。励振は NaN）。遷移 k の開始時刻の値。制御器を閉ループに入れた評価（学習試行 #23）に使う |
 | `/scenarios/{name,pattern,type,phase,split}` | (S,) 文字列 | シナリオ表（S = 394）。`phase` は `'1'` `'2'` `'3'` `'benchmark'` |
 | `/scenarios/{seed,n_transition}` | (S,) | シード、遷移数 |
 | `/stats/{x_mean,x_std,y_mean,y_std}` | (3,) / (2,) | 正規化統計（train の全遷移） |
 | `/scale/*` | (1,) | `DTHETA_MAX`, `TAU_MAX`, `D_THETA_MAX`, `D_DTHETA_MAX` |
+| `/physics/*` | (1,) | 解析モデルの係数 `M`, `mgL`, `Fc`, `Bv`, `eps`, `qMin`, `qMax`, `qdMax`, `tauRated`, `tauPeak`（SI 単位。基準線の計算用） |
 
 ルート属性: `preset`, `created`, `fs_data_hz`, `q_fixed_deg`, `parent_commit`, `matlab`, `exclude_at_limit`, `dtype`, `layout`, `X_columns`, `Y_columns`。
 **MATLAB が書く数値のスカラーは、h5py からは長さ 1 の配列に見える**（例: `f['scale/TAU_MAX'][0]`、`f.attrs['fs_data_hz'][0]`）。

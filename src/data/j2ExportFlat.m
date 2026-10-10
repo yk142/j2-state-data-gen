@@ -17,8 +17,11 @@ function info = j2ExportFlat(ds, outFile, opts)
 %     /<split>/scenario_id (N,)   int32、/scenarios/* の添字（0 始まり）
 %     /<split>/step        (N,)   int32、シナリオ内の遷移番号（0 始まり）
 %     /<split>/at_limit    (N,)   uint8、リミット拘束フラグ（遷移の開始・終了状態がリミットから 0.1° 以内または外側）
+%     /<split>/qref        (N,)   参照角 [rad]（閉ループのシナリオ = 姿勢保持・PTP のみ。励振は NaN）。遷移 k の開始時刻の値
 %     /scenarios/{name,pattern,type,phase,split}  文字列、/scenarios/{seed,n_transition}  整数
 %     /stats/{x_mean,x_std,y_mean,y_std}   正規化統計（train の全遷移）、/scale/*  引継ぎ資料のスケール
+%     /physics/*   J2 の解析モデルの係数（M, mgL, Fc, Bv, eps, qMin, qMax, qdMax, tauRated, tauPeak。SI 単位）。
+%                  基準線（解析モデル）の計算に使う: M·ddq = τ + mgL·sin θ − Bv·dq − Fc·tanh(dq/eps)
 %     ルート属性: preset, created, fs_data, q_fixed_deg, parent_commit, matlab, layout など
 %   インデックスは他言語向けに 0 始まり。MATLAB で使うときは +1 する。
 if nargin < 3, opts = struct(); end
@@ -33,6 +36,7 @@ fo = struct('excludeAtLimit', opts.excludeAtLimit);
 S = ds.scen;
 off = [0; cumsum([S.nTransition]')];            % 全シナリオの at_limit を連結したときの先頭位置
 atAll = vertcat(S.atLimit);
+qrefAll = cell2mat(arrayfun(@(sc) refCol(sc), S(:), 'UniformOutput', false));   % 参照が無いシナリオは NaN
 
 % ---- split ごとの行列を作る ----
 D = struct();
@@ -44,6 +48,7 @@ for i = 1:numel(opts.splits)
     D.(sp).scenario_id = int32(inf1.scenario - 1);
     D.(sp).step        = int32(inf1.k - 1);
     D.(sp).at_limit    = uint8(atAll(off(inf1.scenario) + inf1.k));
+    D.(sp).qref        = qrefAll(off(inf1.scenario) + inf1.k);
 end
 cast = @(A) cast_(A, opts.dtype);
 
@@ -59,6 +64,7 @@ switch lower(ext)
             writeVec(outFile, ['/' sp '/scenario_id'], d.scenario_id, opts, '0-based index into /scenarios');
             writeVec(outFile, ['/' sp '/step'],        d.step,        opts, '0-based transition index within the scenario');
             writeVec(outFile, ['/' sp '/at_limit'],    d.at_limit,    opts, '1 = limit-bound transition');
+            writeVec(outFile, ['/' sp '/qref'],        cast(d.qref),  opts, 'reference angle [rad] at the start of the step (hold/ptp scenarios), NaN otherwise');
         end
         writeStr(outFile, '/scenarios/name',    string({S.name}));
         writeStr(outFile, '/scenarios/pattern', string({S.pattern}));
@@ -76,6 +82,10 @@ switch lower(ext)
         for nm = fieldnames(sc)'
             writeVec(outFile, ['/scale/' nm{1}], double(sc.(nm{1})), opts, '');
         end
+        jp = j2Params();
+        for nm = {'M','mgL','Fc','Bv','eps','qMin','qMax','qdMax','tauRated','tauPeak'}
+            writeVec(outFile, ['/physics/' nm{1}], double(jp.(nm{1})), opts, '');
+        end
         writeAttrs(outFile, ds, opts);
     case '.mat'
         out = struct();
@@ -84,6 +94,7 @@ switch lower(ext)
             out.([sp '_X']) = cast(d.X);   out.([sp '_Y']) = cast(d.Y);
             out.([sp '_X_spec']) = cast(d.Xs);  out.([sp '_Y_spec']) = cast(d.Ys);
             out.([sp '_scenario_id']) = d.scenario_id;  out.([sp '_step']) = d.step;  out.([sp '_at_limit']) = d.at_limit;
+            out.([sp '_qref']) = cast(d.qref);
         end
         out.scenario_name = {S.name}';  out.scenario_pattern = {S.pattern}';  out.scenario_type = {S.type}';
         out.scenario_phase = cellfun(@num2str, {S.phase}', 'UniformOutput', false);  out.scenario_split = {S.split}';
@@ -92,6 +103,10 @@ switch lower(ext)
         out.stats_y_mean = ds.stats.yMean(:);  out.stats_y_std = ds.stats.yStd(:);
         for nm = fieldnames(ds.scale)'
             out.(['scale_' nm{1}]) = ds.scale.(nm{1});
+        end
+        jp = j2Params();
+        for nm = {'M','mgL','Fc','Bv','eps','qMin','qMax','qdMax','tauRated','tauPeak'}
+            out.(['physics_' nm{1}]) = double(jp.(nm{1}));
         end
         if isfield(ds,'manifest') && isfield(ds.manifest,'preset')
             out.preset = ds.manifest.preset;  out.fs_data = ds.manifest.fsData;
@@ -108,6 +123,12 @@ for i = 1:numel(opts.splits), info.n.(opts.splits{i}) = size(D.(opts.splits{i}).
 end
 
 % ======================= ヘルパ =======================
+function c = refCol(sc)
+% 遷移 k の開始時刻の参照角（K 点）。参照が無ければ NaN
+K = sc.nTransition;
+if isempty(sc.qref), c = nan(K,1); else, c = double(sc.qref(1:K)); end
+end
+
 function A = cast_(A, dtype)
 if strcmp(dtype,'single'), A = single(A); else, A = double(A); end
 end

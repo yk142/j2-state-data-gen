@@ -44,6 +44,17 @@ tools/j2_run_all.sh full reports/my_run      # 未生成シナリオの生成 �
 ```
 メモリの都合で 1 プロセス約 3.7 GB を使うため、並列にはしない。
 
+## 学習（Python / PyTorch）
+エクスポート済みの HDF5（`j2ExportFlat`）を読み、Neural State Model（1 ステップ遷移の MLP）を学習・評価する。GPU は不要（CPU 4 コアで 1 エポック約 1 分）。
+```bash
+python3 -m venv --system-site-packages .venv && .venv/bin/pip install h5py   # システムの PyTorch を使う場合（h5py のみ追加）
+.venv/bin/python python/train.py --data data/export/j2_flat_full.h5 --run baseline            # 学習 → data/train/baseline/
+.venv/bin/python python/train.py --run structured --structured                                # Δdq のみ予測、Δq は運動学で求める変種
+.venv/bin/python python/evaluate.py --run baseline --report-dir reports/my_eval              # 1 ステップ誤差・ロールアウト・図
+.venv/bin/python -m unittest discover -s python/tests -v                                      # Python の単体テスト（14 件）
+```
+評価は、1 ステップ誤差（test / PTP ベンチマーク。解析モデルと「変化なし」を基準線に、接触あり・なし、パターン群別）と、ロールアウト（1 秒窓の開ループ、PTP の閉ループ）。結果は [docs/training_report.md](docs/training_report.md)。
+
 ## テスト
 ```matlab
 runtests('test/test_j2_signals.m')       % 信号・Sobol・導出パラメータ（約 3 s）
@@ -66,6 +77,7 @@ runtests('test/test_j2_scenarios.m')     % シナリオ実行 17 件（約 5.5 �
 | `src/control/` | PTP 軌道、フィードフォワード、滑らかな参照 |
 | `src/data/` | 励振信号、Sobol 列、シナリオ表と実行、1 kHz 変換、データセット生成、検証 |
 | `src/analysis/` | カバレッジ評価（時系列・位相平面・周波数・接触） |
+| `python/` | 学習・評価（`j2nsm/`: データ読み込み・モデル・解析モデルの基準線・評価、`train.py`、`evaluate.py`、`tests/`） |
 | `tools/` | 分担ワーカー、完了後の組み立て・評価、連続実行、再現確認 |
 | `test/` | `matlab.unittest` のテスト |
 | `spike/` | Phase 0 の検証用コード（記録として保存） |
@@ -76,6 +88,7 @@ runtests('test/test_j2_scenarios.m')     % シナリオ実行 17 件（約 5.5 �
 ## ドキュメント
 - [docs/dataset.md](docs/dataset.md): データセットの仕様・使い方・注意点・他言語向けエクスポート（Python の読み込み例）
 - [docs/requirements.md](docs/requirements.md): 要件定義 / [docs/plan.md](docs/plan.md): 計画と進捗
+- [docs/training_report.md](docs/training_report.md): 学習の試行（Neural State Model の学習・評価）
 - フェーズごとのレポート: [Phase 0](docs/phase0_report.md)、[Phase 1](docs/phase1_report.md)、[Phase 2](docs/phase2_report.md)、[Phase 3](docs/phase3_report.md)、[リミット接触](docs/limit_contact_report.md)、[Phase 4](docs/phase4_report.md)
 - 作業は「issue → ブランチ → 作業 → 報告 → コミット・issue コメント → PR」の順で行う（`CLAUDE.md`）
 
