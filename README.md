@@ -51,9 +51,11 @@ python3 -m venv --system-site-packages .venv && .venv/bin/pip install h5py   # �
 .venv/bin/python python/train.py --data data/export/j2_flat_full.h5 --run baseline            # 学習 → data/train/baseline/
 .venv/bin/python python/train.py --run structured --structured                                # Δdq のみ予測、Δq は運動学で求める変種
 .venv/bin/python python/evaluate.py --run baseline --report-dir reports/my_eval              # 1 ステップ誤差・ロールアウト・図
-.venv/bin/python -m unittest discover -s python/tests -v                                      # Python の単体テスト（14 件）
+.venv/bin/python python/train.py --run residual --residual                                    # 解析モデル + NN の残差型（#25）
+.venv/bin/python python/compare.py "純粋NN=reports/a" "残差=reports/b"                          # 複数の評価結果を 1 つの表に並べる
+.venv/bin/python -m unittest discover -s python/tests -v                                      # Python の単体テスト（25 件）
 ```
-評価は、1 ステップ誤差（test / PTP ベンチマーク。解析モデルと「変化なし」を基準線に、接触あり・なし、パターン群別）と、ロールアウト（1 秒窓の開ループ、PTP の閉ループ）。結果は [docs/training_report.md](docs/training_report.md)。
+評価は、1 ステップ誤差（test / PTP ベンチマーク。解析モデルと「変化なし」を基準線に、接触あり・なし、パターン群別）と、ロールアウト（1 秒窓の開ループ、PTP の閉ループ）。結果は [docs/training_report.md](docs/training_report.md)（純粋な NN）、[docs/residual_report.md](docs/residual_report.md)（解析モデル + NN の残差型）。
 
 ## テスト
 ```matlab
@@ -88,7 +90,7 @@ runtests('test/test_j2_scenarios.m')     % シナリオ実行 17 件（約 5.5 �
 ## ドキュメント
 - [docs/dataset.md](docs/dataset.md): データセットの仕様・使い方・注意点・他言語向けエクスポート（Python の読み込み例）
 - [docs/requirements.md](docs/requirements.md): 要件定義 / [docs/plan.md](docs/plan.md): 計画と進捗
-- [docs/training_report.md](docs/training_report.md): 学習の試行（Neural State Model の学習・評価）
+- [docs/training_report.md](docs/training_report.md): 学習の試行（純粋な NN）、[docs/residual_report.md](docs/residual_report.md): 学習の試行 2（解析モデル + NN の残差型）
 - フェーズごとのレポート: [Phase 0](docs/phase0_report.md)、[Phase 1](docs/phase1_report.md)、[Phase 2](docs/phase2_report.md)、[Phase 3](docs/phase3_report.md)、[リミット接触](docs/limit_contact_report.md)、[Phase 4](docs/phase4_report.md)
 - 作業は「issue → ブランチ → 作業 → 報告 → コミット・issue コメント → PR」の順で行う（`CLAUDE.md`）
 
