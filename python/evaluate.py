@@ -22,7 +22,7 @@ import torch  # noqa: E402
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from j2nsm import evaluate_lib as ev  # noqa: E402
 from j2nsm.data import load  # noqa: E402
-from j2nsm.model import NSM  # noqa: E402
+from j2nsm.model import build_model  # noqa: E402
 from j2nsm.physics import Physics  # noqa: E402
 
 plt.rcParams["font.family"] = ["Noto Sans CJK JP", "IPAexGothic", "TakaoPGothic", "DejaVu Sans"]
@@ -45,8 +45,7 @@ def parse():
 
 def load_model(path):
     ck = torch.load(path, map_location="cpu")
-    c = ck["config"]
-    m = NSM(c["scale"], c["dt"], c["width"], c["depth"], c["structured"])
+    m = build_model(ck["config"])
     m.load_state_dict(ck["state_dict"])
     m.eval()
     return m, ck
@@ -139,7 +138,7 @@ def main():
     model, ck = load_model(os.path.join(run_dir, "model.pt"))
     d = load(a.data)
     phys = Physics({k: d["physics"][k] for k in ("M", "mgL", "Fc", "Bv", "eps", "qMin", "qMax")}, d["dt"])
-    metrics = {"run": a.run, "epoch_best": ck["epoch"], "structured": model.structured,
+    metrics = {"run": a.run, "kind": model.kind, "epoch_best": ck["epoch"], "structured": model.structured,
                "n_param": sum(p.numel() for p in model.parameters())}
 
     print("1 ステップ誤差 ...", flush=True)
@@ -177,14 +176,14 @@ def main():
 
 
 def print_summary(m):
-    print(f"\n== {m['run']}（構造付き={m['structured']}、パラメータ {m['n_param']:,}、best epoch {m['epoch_best']}）")
+    print(f"\n== {m['run']}（種類={m.get('kind', 'nsm')}、構造付き={m['structured']}、パラメータ {m['n_param']:,}、best epoch {m['epoch_best']}）")
     for sp in ("test", "benchmark"):
         t = m["one_step"][sp]
         print(f"[1 ステップ {sp}] 加速度換算 RMSE [rad/s²]（目標の標準偏差 {t['all']['target_std_dq_rad_s2']:.1f}）")
-        for k in ("all", "free(接触なし)", "contact(接触あり)"):
+        for k in ("all", "free(接触なし)", "contact(接触あり)", "contact:dynamic(動的な接触)", "contact:static(静止押し付け)"):
             if k in t:
                 r = t[k]
-                print(f"   {k:18s} n={r['n']:>8,}  model {r['model']['rmse_ddq_rad_s2']:8.3f}  analytic {r['analytic']['rmse_ddq_rad_s2']:8.3f}  zero {r['zero']['rmse_ddq_rad_s2']:8.3f}")
+                print(f"   {k:26s} n={r['n']:>8,}  model {r['model']['rmse_ddq_rad_s2']:8.3f}  analytic {r['analytic']['rmse_ddq_rad_s2']:8.3f}  zero {r['zero']['rmse_ddq_rad_s2']:8.3f}")
     w = m["rollout_windows"].get("test")
     if w:
         print(f"[ロールアウト test {w['n_windows']} 窓、{w['horizon']} ステップ] θ RMSE [deg]")
