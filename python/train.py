@@ -51,6 +51,7 @@ def parse():
     p.add_argument("--loss", choices=("mse", "huber", "dual"), default="mse")
     p.add_argument("--dual-lambda", type=float, default=1.0, help="dual 損失の第 2 項（接触なし）の重み")
     p.add_argument("--patience", type=int, default=8, help="val 損失が改善しないエポック数の上限")
+    p.add_argument("--no-contact", action="store_true", help="contact_* シナリオと atLimit 遷移を train/val から除外する（接触なしだけで学習）")
     p.add_argument("--max-train", type=int, default=0, help="学習行数の上限（動作確認用。0 は全件）")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--threads", type=int, default=4)
@@ -98,6 +99,14 @@ def main():
 
     d = load(a.data, splits=("train", "val"))
     tr, va = d["splits"]["train"], d["splits"]["val"]
+    if a.no_contact:
+        pat = np.asarray(d["scenarios"]["pattern"]).astype(str)
+        def keep(sp):
+            ok = ~sp["at_limit"] & ~np.char.startswith(pat[sp["scenario_id"]], "contact_")
+            return {k: v[ok] for k, v in sp.items()}
+        n0 = len(tr["X"]) + len(va["X"])
+        tr, va = keep(tr), keep(va)
+        print(f"--no-contact: {n0:,} → {len(tr['X']) + len(va['X']):,} 行（contact_* と atLimit を除外）")
     if a.max_train and a.max_train < len(tr["X"]):
         idx = np.sort(np.random.permutation(len(tr["X"]))[:a.max_train])
         tr = {k: v[idx] for k, v in tr.items()}
